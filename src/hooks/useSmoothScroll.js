@@ -25,7 +25,7 @@ export function useSmoothScroll() {
       // which is what made repeated flicks feel like slow motion rather than
       // momentum. A lerp chases whatever the target currently is, so re-aiming
       // mid-flight carries the existing speed into the new move.
-      lerp: 0.1,
+      lerp: 0.06,
       // The wheel belongs to useSectionSnap: easing it here only made the same
       // scroll slower. Lenis stays on as the animator for the jumps it makes.
       smoothWheel: false,
