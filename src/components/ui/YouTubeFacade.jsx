@@ -1,12 +1,31 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
+import { animate, svg } from 'animejs';
+import { prefersReducedMotion } from '../../hooks/useAnimeScope';
+
+const PLAY_PATH = 'M8 5 L8 19 L19 12 Z';
+const LOADING_PATH = 'M9 9 L15 9 L15 15 L9 15 Z';
 
 /**
  * Lightweight YouTube placeholder: shows the poster frame and only mounts the
  * real iframe once the visitor asks for it, so four embeds don't ship with the
- * page.
+ * page. The play triangle morphs into a square while the iframe mounts.
  */
 export default function YouTubeFacade({ videoId, title }) {
   const [active, setActive] = useState(false);
+  const icon = useRef(null);
+
+  const start = () => {
+    if (prefersReducedMotion() || !icon.current) {
+      setActive(true);
+      return;
+    }
+    animate(icon.current, {
+      d: svg.morphTo(`#morph-target-${videoId}`),
+      duration: 320,
+      ease: 'out(3)',
+      onComplete: () => setActive(true),
+    });
+  };
 
   if (active) {
     return (
@@ -24,7 +43,7 @@ export default function YouTubeFacade({ videoId, title }) {
   return (
     <button
       type="button"
-      onClick={() => setActive(true)}
+      onClick={start}
       aria-label={`Play video: ${title}`}
       className="group relative h-full w-full overflow-hidden"
     >
@@ -37,12 +56,11 @@ export default function YouTubeFacade({ videoId, title }) {
       />
       <span className="absolute inset-0" style={{ background: 'rgba(11,15,23,0.35)' }} />
       <span className="absolute inset-0 flex items-center justify-center">
-        <span
-          className="flex h-16 w-16 items-center justify-center rounded-full transition-transform duration-300 group-hover:scale-110"
-          style={{ background: 'var(--accent)' }}
-        >
-          <svg viewBox="0 0 24 24" className="ml-1 h-7 w-7 fill-white" aria-hidden="true">
-            <path d="M8 5v14l11-7z" />
+        <span className="play-badge">
+          <svg viewBox="0 0 24 24" className="h-7 w-7" aria-hidden="true">
+            <path ref={icon} d={PLAY_PATH} fill="#fff" />
+            {/* Morph target, never rendered visibly. */}
+            <path id={`morph-target-${videoId}`} d={LOADING_PATH} fill="none" opacity="0" />
           </svg>
         </span>
       </span>

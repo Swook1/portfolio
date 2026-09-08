@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { animate, stagger } from 'animejs';
+import { animate, createDraggable, createSpring, stagger, svg, utils } from 'animejs';
 import { certificates } from '../data/certificates';
 import { useAnimeScope, prefersReducedMotion } from '../hooks/useAnimeScope';
 import CertificateModal from './ui/CertificateModal';
 
 const AUTO_ROTATE_MS = 8000;
-const SWIPE_THRESHOLD = 50;
+const DRAG_STEP = 140; // px of drag that counts as one card
 
 /** Shortest signed distance from `index` to `current` on a ring of `total`. */
 function ringOffset(index, current, total) {
@@ -22,38 +22,80 @@ export default function Certificates() {
 
   const stage = useRef(null);
   const slideRefs = useRef([]);
-  const touchStart = useRef(null);
-  const touchEnd = useRef(null);
+  const autoplay = useRef(null);
+  const advance = useRef(() => {});
 
   const total = certificates.length;
 
   const next = useCallback(() => setCurrent((i) => (i + 1) % total), [total]);
   const prev = useCallback(() => setCurrent((i) => (i - 1 + total) % total), [total]);
+  advance.current = next;
 
-  const root = useAnimeScope(() => [
-    animate('.cert-head', {
+  const root = useAnimeScope(() => {
+    // The countdown ring both paces the autoplay and shows how long is left:
+    // one drawable stroke, looping, advancing the deck on every lap.
+    autoplay.current = animate(svg.createDrawable('.cert-ring-path'), {
+      draw: ['0 0', '0 1'],
+      duration: AUTO_ROTATE_MS,
+      ease: 'linear',
+      loop: true,
+      onLoop: () => advance.current(),
+    });
+
+    // Drag to flick through the deck. The draggable moves an invisible proxy
+    // rather than the track itself: its release spring would otherwise settle
+    // the track at the dragged offset and leave the deck off-centre. The track
+    // follows the drag at a quarter strength for rubber-band feel, and this
+    // component stays the only writer of the track's transform.
+    createDraggable('.cert-drag-proxy', {
+      trigger: '.cert-viewport',
+      y: false,
+      x: { snap: DRAG_STEP },
+      cursor: { onHover: 'grab', onGrab: 'grabbing' },
+      onGrab: () => autoplay.current?.pause(),
+      onDrag: (self) => utils.set('.cert-track', { x: self.x * 0.25 }),
+      onRelease: (self) => {
+        const steps = Math.round(self.x / DRAG_STEP);
+        if (steps) setCurrent((i) => (((i - steps) % total) + total) % total);
+        self.stop();
+        self.setX(0);
+        animate('.cert-track', {
+          x: 0,
+          duration: 600,
+          ease: createSpring({ stiffness: 90, damping: 20 }),
+        });
+        autoplay.current?.restart();
+      },
+    });
+
+    const head = animate('.cert-head', {
       opacity: [0, 1],
       y: [30, 0],
       duration: 700,
       ease: 'out(3)',
       autoplay: false,
-    }),
-    animate('.cert-stage', {
+    });
+
+    const deck = animate('.cert-stage', {
       opacity: [0, 1],
       y: [40, 0],
-      duration: 800,
-      ease: 'out(3)',
+      scale: [0.94, 1],
+      duration: 900,
+      ease: createSpring({ stiffness: 80, damping: 15 }),
       autoplay: false,
-    }),
-    animate('.cert-caption', {
+    });
+
+    const caption = animate('.cert-caption', {
       opacity: [0, 1],
       y: [20, 0],
       duration: 700,
       delay: stagger(120, { start: 350 }),
       ease: 'out(3)',
       autoplay: false,
-    }),
-  ]);
+    });
+
+    return [head, deck, caption];
+  });
 
   // Side-slide distance scales with the stage width.
   useEffect(() => {
@@ -66,7 +108,7 @@ export default function Certificates() {
     return () => ro.disconnect();
   }, []);
 
-  // Drive the carousel transition with anime.js instead of CSS transitions.
+  // Lay the deck out: centre card up front, neighbours behind and turned away.
   useEffect(() => {
     slideRefs.current.forEach((el, i) => {
       if (!el) return;
@@ -75,9 +117,9 @@ export default function Certificates() {
       const target = {
         x: offset * spacing,
         scale: offset === 0 ? 1 : 0.72,
+        rotateY: offset * -16,
         opacity: visible ? (offset === 0 ? 1 : 0.45) : 0,
       };
-      el.style.zIndex = offset === 0 ? 20 : visible ? 10 : 0;
       el.style.pointerEvents = visible ? 'auto' : 'none';
       el.parentElement.style.zIndex = offset === 0 ? 20 : visible ? 10 : 0;
       el.setAttribute('aria-hidden', visible ? 'false' : 'true');
@@ -88,41 +130,41 @@ export default function Certificates() {
         el.style.opacity = target.opacity;
         return;
       }
-      animate(el, { ...target, duration: 700, ease: 'out(3)' });
+      animate(el, {
+        ...target,
+        duration: 900,
+        ease: createSpring({ stiffness: 90, damping: 18 }),
+      });
     });
   }, [current, spacing, total]);
 
-  // Auto-rotate, paused while the modal is open.
+  // The modal owns the visitor's attention, so the autoplay ring stops.
   useEffect(() => {
-    if (selected) return undefined;
-    const id = setInterval(next, AUTO_ROTATE_MS);
-    return () => clearInterval(id);
-  }, [next, selected]);
+    const ring = autoplay.current;
+    if (!ring) return;
+    if (selected) ring.pause();
+    else ring.play();
+  }, [selected]);
 
-  const onTouchStart = (e) => {
-    touchEnd.current = null;
-    touchStart.current = e.targetTouches[0].clientX;
-  };
-  const onTouchMove = (e) => {
-    touchEnd.current = e.targetTouches[0].clientX;
-  };
-  const onTouchEnd = () => {
-    if (touchStart.current == null || touchEnd.current == null) return;
-    const distance = touchStart.current - touchEnd.current;
-    if (distance > SWIPE_THRESHOLD) next();
-    if (distance < -SWIPE_THRESHOLD) prev();
+  const holdAutoplay = () => autoplay.current?.pause();
+  const resumeAutoplay = () => {
+    if (!selected) autoplay.current?.play();
   };
 
   return (
-    <section ref={root} id="certificate" className="relative flex min-h-screen items-center py-24">
+    <section ref={root} id="certificate" className="relative flex min-h-screen items-center py-28">
       <div className="section-shell text-center">
         <div className="cert-head anim-hidden">
           <span className="eyebrow">Credentials</span>
           <h2 className="section-title mt-5">Certificates</h2>
-          <p className="section-sub">Achievements and certifications I have earned</p>
+          <p className="section-sub">Drag the deck, or let it run — {total} in total</p>
         </div>
 
-        <div className="cert-stage anim-hidden relative mt-14">
+        <div
+          className="cert-stage anim-hidden relative mt-14"
+          onMouseEnter={holdAutoplay}
+          onMouseLeave={resumeAutoplay}
+        >
           <button
             type="button"
             onClick={prev}
@@ -139,37 +181,24 @@ export default function Certificates() {
             </svg>
           </button>
 
-          <div
-            ref={stage}
-            onTouchStart={onTouchStart}
-            onTouchMove={onTouchMove}
-            onTouchEnd={onTouchEnd}
-            className="relative mx-auto h-[300px] w-full overflow-hidden sm:h-[380px] lg:h-[460px]"
-          >
-            {certificates.map((cert, i) => (
-              // The wrapper centers the slide with flex, leaving `transform`
-              // entirely to anime.js.
-              <div
-                key={cert.id}
-                className="pointer-events-none absolute inset-0 flex justify-center"
-              >
-                <button
-                  type="button"
-                  ref={(el) => (slideRefs.current[i] = el)}
-                  onClick={() => (i === current ? setSelected(cert) : setCurrent(i))}
-                  aria-label={`${cert.title} - open full size`}
-                  className="cert-slide card h-full w-[64%] max-w-[520px] overflow-hidden p-3 opacity-0 sm:w-[56%]"
-                  style={{ willChange: 'transform, opacity' }}
-                >
-                  <img
-                    src={cert.thumb}
-                    alt={cert.title}
-                    loading="lazy"
-                    className="h-full w-full object-contain"
-                  />
-                </button>
-              </div>
-            ))}
+          <span className="cert-drag-proxy" aria-hidden="true" />
+
+          <div ref={stage} className="cert-viewport">
+            <div className="cert-track">
+              {certificates.map((cert, i) => (
+                <div key={cert.id} className="cert-slot">
+                  <button
+                    type="button"
+                    ref={(el) => (slideRefs.current[i] = el)}
+                    onClick={() => (i === current ? setSelected(cert) : setCurrent(i))}
+                    aria-label={`${cert.title} - open full size`}
+                    className="cert-slide card"
+                  >
+                    <img src={cert.thumb} alt={cert.title} loading="lazy" />
+                  </button>
+                </div>
+              ))}
+            </div>
           </div>
 
           <button
@@ -184,13 +213,20 @@ export default function Certificates() {
           </button>
         </div>
 
-        <div className="cert-caption anim-hidden mx-auto mt-8 max-w-xl">
-          <h3 className="font-display text-base font-semibold sm:text-lg">
-            {certificates[current].title}
-          </h3>
-          <p className="mt-2 text-xs leading-relaxed text-muted sm:text-sm">
-            {certificates[current].description}
-          </p>
+        <div className="cert-caption anim-hidden mx-auto mt-10 flex max-w-2xl items-center gap-4">
+          {/* Countdown ring: the same drawable that paces the autoplay. */}
+          <svg className="cert-ring" viewBox="0 0 40 40" aria-hidden="true">
+            <circle className="cert-ring-track" cx="20" cy="20" r="17" />
+            <circle className="cert-ring-path" cx="20" cy="20" r="17" />
+          </svg>
+          <div className="text-left">
+            <h3 className="font-display text-base font-semibold sm:text-lg">
+              {certificates[current].title}
+            </h3>
+            <p className="mt-1 text-xs leading-relaxed text-muted sm:text-sm">
+              {certificates[current].description}
+            </p>
+          </div>
         </div>
 
         <div className="cert-caption anim-hidden mt-6 flex justify-center gap-2">

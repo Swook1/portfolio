@@ -279,14 +279,6 @@ body {
   outline-offset: 4px;
 }
 
-.project-frame {
-  transition: border-color 0.3s ease, box-shadow 0.3s ease;
-}
-.project-frame:hover {
-  border-color: var(--accent);
-  box-shadow: 0 30px 60px -30px var(--accent);
-}
-
 .cert-arrow {
   position: absolute;
   top: 50%;
@@ -309,89 +301,237 @@ body {
   background: var(--surface-2);
 }
 
+/* Deck: a draggable track of absolutely stacked cards, viewed in 3D. */
+.cert-viewport {
+  position: relative;
+  margin-inline: auto;
+  height: 300px;
+  width: 100%;
+  overflow: hidden;
+  perspective: 1400px;
+}
+@media (min-width: 640px) {
+  .cert-viewport {
+    height: 380px;
+  }
+}
+@media (min-width: 1024px) {
+  .cert-viewport {
+    height: 460px;
+  }
+}
+
+.cert-track {
+  position: absolute;
+  inset: 0;
+  transform-style: preserve-3d;
+  touch-action: pan-y;
+}
+
+.cert-slot {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+}
+
 .cert-slide {
   pointer-events: auto;
+  height: 100%;
+  width: 64%;
+  max-width: 520px;
+  overflow: hidden;
+  padding: 0.75rem;
+  opacity: 0;
   transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+@media (min-width: 640px) {
+  .cert-slide {
+    width: 56%;
+  }
+}
+.cert-slide img {
+  height: 100%;
+  width: 100%;
+  object-fit: contain;
 }
 .cert-slide:hover {
   border-color: var(--accent);
   box-shadow: 0 30px 70px -35px var(--accent);
 }
 
-/* --- Hero portrait frame (static; nothing here animates on its own) --- */
-.hero-grid {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  opacity: 0.5;
-  background-image: linear-gradient(var(--border) 1px, transparent 1px),
-    linear-gradient(90deg, var(--border) 1px, transparent 1px);
-  background-size: 64px 64px;
-  mask-image: radial-gradient(ellipse 70% 60% at 60% 40%, #000 0%, transparent 75%);
-  -webkit-mask-image: radial-gradient(ellipse 70% 60% at 60% 40%, #000 0%, transparent 75%);
+/* Autoplay countdown */
+.cert-ring {
+  height: 40px;
+  width: 40px;
+  flex-shrink: 0;
+  transform: rotate(-90deg);
+}
+.cert-ring-track,
+.cert-ring-path {
+  fill: none;
+  stroke-width: 2;
+}
+.cert-ring-track {
+  stroke: var(--border);
+}
+.cert-ring-path {
+  stroke: var(--accent);
+  stroke-linecap: round;
 }
 
-.portrait-panel {
-  position: absolute;
-  inset: 14% -7% 0 -7%;
-  border-radius: 2rem;
-  border: 1px solid var(--border);
-  background: linear-gradient(180deg, var(--surface) 0%, rgba(21, 28, 40, 0.35) 100%);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+/* --- Projects --- */
+/* Projects index column */
+.pj-index-wrap {
+  position: relative;
+}
+.pj-index {
+  position: relative;
+  display: flex;
+  gap: 0.25rem;
+  overflow-x: auto;
+  padding-bottom: 0.5rem;
+  scrollbar-width: thin;
+}
+@media (min-width: 1024px) {
+  .pj-index {
+    flex-direction: column;
+    max-height: 30rem;
+    overflow-x: visible;
+    overflow-y: auto;
+    padding-right: 0.5rem;
+    padding-bottom: 0;
+  }
 }
 
-.portrait-corner {
-  position: absolute;
-  height: 28px;
-  width: 28px;
-  border: 2px solid var(--accent);
-}
-.portrait-corner--tl {
-  top: -1px;
-  left: -1px;
-  border-right: 0;
-  border-bottom: 0;
-  border-top-left-radius: 2rem;
-}
-.portrait-corner--br {
-  bottom: -1px;
-  right: -1px;
-  border-left: 0;
-  border-top: 0;
-  border-bottom-right-radius: 2rem;
-}
-
-.portrait-badge {
-  position: absolute;
-  bottom: 1.5rem;
-  left: -1.25rem;
-  z-index: 20;
-  display: inline-flex;
+.pj-item {
+  display: flex;
   align-items: center;
-  gap: 0.5rem;
-  border-radius: 9999px;
-  border: 1px solid var(--border);
-  background: rgba(11, 15, 23, 0.85);
-  backdrop-filter: blur(8px);
-  padding: 0.5rem 0.9rem;
-  font-size: 0.75rem;
-  color: var(--text-muted);
+  gap: 0.75rem;
+  width: 100%;
   white-space: nowrap;
+  border-radius: 0.85rem;
+  padding: 0.85rem 1rem;
+  text-align: left;
+  color: var(--text-muted);
+  transition: color 0.25s ease, background 0.25s ease;
+}
+.pj-item:hover {
+  background: var(--surface);
+  color: var(--text);
+}
+.pj-item.is-active {
+  color: var(--text);
+}
+.pj-num {
+  font-family: 'Space Grotesk', Poppins, sans-serif;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: var(--text-dim);
+}
+.pj-item.is-active .pj-num {
+  color: var(--accent);
+}
+.pj-name {
+  font-size: 0.9rem;
+  font-weight: 500;
 }
 
-/* Softens the hard bottom edge of the cut-out portrait against the panel. */
-.hero-img {
-  mask-image: linear-gradient(to bottom, #000 90%, transparent 100%);
-  -webkit-mask-image: linear-gradient(to bottom, #000 90%, transparent 100%);
-}
-
-/* --- About photo frame --- */
-.about-frame-box {
+/* Accent marker that slides between index entries. */
+.pj-marker {
   position: absolute;
-  inset: -1rem -1rem 1rem 1rem;
-  border-radius: 1.5rem;
-  border: 1px solid var(--accent);
-  opacity: 0.45;
+  left: 0;
+  top: 0;
+  z-index: 1;
+  width: 2px;
+  border-radius: 9999px;
+  background: var(--accent);
+  opacity: 0;
+  pointer-events: none;
+  display: none;
+}
+@media (min-width: 1024px) {
+  .pj-marker {
+    display: block;
+  }
+}
+
+.tech-chip {
+  display: flex;
+  height: 2.5rem;
+  width: 2.5rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.75rem;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  transition: border-color 0.3s ease, background 0.3s ease;
+}
+.tech-chip:hover {
+  border-color: var(--accent);
+  background: var(--surface-2);
+}
+.tech-chip img {
+  height: 1.5rem;
+  width: 1.5rem;
+  object-fit: contain;
+}
+@media (min-width: 640px) {
+  .tech-chip {
+    height: 3rem;
+    width: 3rem;
+  }
+  .tech-chip img {
+    height: 1.75rem;
+    width: 1.75rem;
+  }
+}
+
+/* Orbit marker behind the Projects heading */
+.orbit {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  height: 300px;
+  width: 300px;
+  translate: -50% -50%;
+  pointer-events: none;
+  overflow: visible;
+}
+.orbit-path {
+  fill: none;
+  stroke: var(--border);
+  stroke-width: 1;
+}
+.orbit-dot {
+  fill: var(--accent);
+  filter: drop-shadow(0 0 8px var(--accent));
+}
+
+.project-frame {
+  transform-style: preserve-3d;
+  will-change: transform;
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+.project-frame:hover {
+  border-color: var(--accent);
+  box-shadow: 0 30px 60px -30px var(--accent);
+}
+
+.play-badge {
+  display: flex;
+  height: 4rem;
+  width: 4rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  background: var(--accent);
+  transition: transform 0.3s ease;
+}
+.group:hover .play-badge {
+  transform: scale(1.1);
 }
 
 /* --- Global animated backdrop --- */
@@ -464,4 +604,15 @@ body {
   .bd-blob-c {
     display: none;
   }
+}
+
+/* Invisible drag proxy: the deck's gesture target, never seen. */
+.cert-drag-proxy {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  height: 1px;
+  width: 1px;
+  opacity: 0;
+  pointer-events: none;
 }
