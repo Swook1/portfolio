@@ -3,8 +3,8 @@ import portrait from '../assets/picture/rayyanganteng2.webp';
 import { useAnimeScope } from '../hooks/useAnimeScope';
 
 const paragraphs = [
-  "I'm an Indonesian, born in Jakarta with three younger siblings. I believe that I can achieve my goal as a developer. I am committed to learning and accepting others' input.",
-  "I have a strong passion for continuously learning and exploring new technologies. As a Computer Science student at Bina Nusantara University, I'm always eager to expand my knowledge in software or website development and stay updated with the latest industry trends.",
+  "I'm an Indonesian developer based in Jakarta. I believe I can reach my goal as a developer, and I'm committed to learning and to taking other people's input on board.",
+  "I'm a Computer Science student at Bina Nusantara University, taking the Software Engineering stream. Most of my work is fullstack web development, and I enjoy exploring beyond it — IoT and embedded systems, and artificial intelligence.",
   'Beyond coding, my interests include Sports, Gym, Movies, and Comics, which help me maintain a balanced lifestyle and inspire creativity in my work.',
 ];
 

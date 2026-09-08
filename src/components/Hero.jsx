@@ -3,7 +3,7 @@ import person from '../assets/picture/rayyanganteng1.webp';
 import { heroLinks } from '../data/socials';
 import { useAnimeScope } from '../hooks/useAnimeScope';
 
-const facts = ['Jakarta, Indonesia', 'Full-stack Development', 'Computer Science'];
+const facts = ['Jakarta, Indonesia', 'Fullstack Development', 'Computer Science'];
 
 export default function Hero() {
   const root = useAnimeScope(() => {
@@ -47,7 +47,7 @@ export default function Hero() {
           </h1>
 
           <p className="hero-sub anim-hidden mx-auto max-w-xl text-sm leading-relaxed text-muted sm:text-base lg:mx-0 lg:text-lg">
-            Full-stack developer and Computer Science student at Bina Nusantara University
+            Fullstack Developer and Computer Science student at Bina Nusantara University
           </p>
 
           <ul className="flex flex-wrap justify-center gap-x-5 gap-y-2 lg:justify-start">
