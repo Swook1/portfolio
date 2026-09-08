@@ -33,27 +33,37 @@ export function useAnimeScope(setup, deps = []) {
     if (prefersReducedMotion()) return undefined;
 
     let deferred = [];
-    scope.current = createScope({ root }).add((self) => {
-      const result = setup(self);
-      deferred = Array.isArray(result) ? result.filter(Boolean) : result ? [result] : [];
-    });
+    let entered = false;
 
-    // The observer is created unconditionally: anime.js may fill `deferred`
-    // after `add()` returns, so the array is read at intersection time and the
-    // observer only disconnects once it actually had something to play.
+    // Either side of this race can win: a section already on screen at mount
+    // (a #hash deep link, a hot reload) intersects before anime.js has handed
+    // back the animations, while a section further down fills `deferred` long
+    // before it is ever seen. So both the observer and the setup call `play`,
+    // and it only runs once both halves are ready.
+    const play = () => {
+      if (!entered || !deferred.length) return;
+      deferred.forEach((anim) => anim.play());
+      observer.disconnect();
+    };
+
     const observer = new IntersectionObserver(
       (entries) => {
         if (!entries.some((e) => e.isIntersecting)) return;
-        if (!deferred.length) return;
-        deferred.forEach((anim) => anim.play());
-        observer.disconnect();
+        entered = true;
+        play();
       },
       { rootMargin: '0px 0px -8% 0px', threshold: 0 }
     );
     if (root.current) observer.observe(root.current);
 
+    scope.current = createScope({ root }).add((self) => {
+      const result = setup(self);
+      deferred = Array.isArray(result) ? result.filter(Boolean) : result ? [result] : [];
+      play();
+    });
+
     return () => {
-      observer?.disconnect();
+      observer.disconnect();
       scope.current?.revert();
       scope.current = null;
     };

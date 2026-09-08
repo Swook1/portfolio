@@ -165,13 +165,104 @@ body {
   background: var(--accent-dim);
 }
 
+/* --- Skills scatter cloud --- */
+.skill-cloud {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 1.25rem 1.5rem;
+  margin-inline: auto;
+  max-width: 62rem;
+  position: relative;
+}
+@media (min-width: 768px) {
+  .skill-cloud {
+    gap: 1.75rem 2.5rem;
+  }
+}
+
+.skill-node {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.6rem;
+  will-change: transform;
+}
+/* Tile sizes drive the scatter's rhythm; they scale down with the viewport. */
+.skill-node--sm {
+  --tile: clamp(56px, 13vw, 78px);
+}
+.skill-node--md {
+  --tile: clamp(68px, 16vw, 98px);
+}
+.skill-node--lg {
+  --tile: clamp(80px, 19vw, 120px);
+}
+
 .skill-tile {
-  transition: border-color 0.3s ease, box-shadow 0.3s ease, background 0.3s ease;
+  display: grid;
+  place-items: center;
+  height: var(--tile);
+  width: var(--tile);
+  border-radius: 1.25rem;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  transition: transform 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease,
+    background 0.3s ease;
+}
+.skill-tile img {
+  height: 55%;
+  width: 55%;
+  object-fit: contain;
 }
 .skill-tile:hover {
+  transform: translateY(-6px) scale(1.06);
   border-color: var(--accent);
   background: var(--surface-2);
-  box-shadow: 0 18px 40px -22px var(--accent);
+  box-shadow: 0 22px 45px -20px var(--accent);
+}
+
+.skill-label {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  transition: color 0.3s ease;
+}
+.skill-node:hover .skill-label {
+  color: var(--accent-soft);
+}
+
+/* Faint concentric rings behind the cloud. */
+.skill-rings {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+.skill-rings span {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  translate: -50% -50%;
+  border-radius: 9999px;
+  border: 1px solid var(--border);
+  opacity: 0.5;
+}
+.skill-rings span:nth-child(1) {
+  height: 320px;
+  width: 320px;
+}
+.skill-rings span:nth-child(2) {
+  height: 560px;
+  width: 560px;
+  opacity: 0.32;
+}
+.skill-rings span:nth-child(3) {
+  height: 820px;
+  width: 820px;
+  opacity: 0.18;
 }
 
 .project-frame {
