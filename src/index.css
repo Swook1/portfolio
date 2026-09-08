@@ -618,3 +618,27 @@ body {
   opacity: 0;
   pointer-events: none;
 }
+
+/* WebGL backdrop tier: fades in over the CSS one once three.js is ready. */
+.bd-canvas {
+  position: absolute;
+  inset: 0;
+  height: 100%;
+  width: 100%;
+  opacity: 0;
+  transition: opacity 1.2s ease;
+}
+.bd-canvas.is-live {
+  opacity: 1;
+}
+
+/* When the star field is live the CSS blobs and dots step aside so the two
+   don't stack into mush. */
+.bd-css {
+  position: absolute;
+  inset: 0;
+  transition: opacity 1.2s ease;
+}
+.bd-css.is-muted {
+  opacity: 0;
+}
