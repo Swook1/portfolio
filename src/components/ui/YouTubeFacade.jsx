@@ -5,17 +5,21 @@ import { prefersReducedMotion } from '../../hooks/useAnimeScope';
 const PLAY_PATH = 'M8 5 L8 19 L19 12 Z';
 const LOADING_PATH = 'M9 9 L15 9 L15 15 L9 15 Z';
 
+// Chrome's effectiveType is a rolling estimate that reads "3g" on plenty of
+// healthy wifi, so only the genuinely slow tiers count as too slow to stream.
+const TOO_SLOW = ['slow-2g', '2g'];
+
 /**
  * Autoplay is refused when the visitor has asked for less motion, or when the
- * browser reports a metered or slow connection — a muted clip is not worth
- * someone's mobile data.
+ * browser reports data saver or a genuinely slow connection — a muted clip is
+ * not worth someone's mobile data.
  */
 function autoplayAllowed() {
   if (prefersReducedMotion()) return false;
   const connection = navigator.connection;
   if (!connection) return true;
   if (connection.saveData) return false;
-  return !/2g|slow-2g|3g/.test(connection.effectiveType || '');
+  return !TOO_SLOW.includes(connection.effectiveType);
 }
 
 /**
