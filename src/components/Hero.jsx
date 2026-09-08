@@ -93,11 +93,6 @@ export default function Hero() {
               fetchPriority="high"
               className="hero-img anim-hidden relative z-10 mx-auto block w-full object-contain object-bottom"
             />
-
-            <span className="hero-badge anim-hidden portrait-badge">
-              <span aria-hidden="true" className="h-2 w-2 rounded-full bg-accent" />
-              Open to collaborate
-            </span>
           </div>
         </div>
       </div>
