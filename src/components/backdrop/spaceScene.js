@@ -23,6 +23,32 @@ function glowTexture(THREE, color) {
 }
 
 /**
+ * Builds the star field. Exported so the combined backdrop can reuse it
+ * without duplicating the geometry setup.
+ */
+export function createStarField(THREE, { count = STAR_COUNT, field = FIELD } = {}) {
+  const positions = new Float32Array(count * 3);
+  for (let i = 0; i < count; i += 1) {
+    positions[i * 3] = (Math.random() - 0.5) * field.x * 2;
+    positions[i * 3 + 1] = (Math.random() - 0.5) * field.y * 2;
+    positions[i * 3 + 2] = -Math.random() * field.z;
+  }
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+
+  const material = new THREE.PointsMaterial({
+    color: 0x9ec5ff,
+    size: 0.08,
+    sizeAttenuation: true,
+    transparent: true,
+    opacity: 0.62,
+    depthWrite: false,
+  });
+
+  return { points: new THREE.Points(geometry, material), geometry, material };
+}
+
+/**
  * The site-wide backdrop: a star field with real depth plus a few drifting
  * nebula glows. Scrolling flies the camera through it and the pointer tilts
  * it, both through damped anime.js animatables.
@@ -41,27 +67,8 @@ export async function createSpace({ canvas }) {
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
 
   // --- Stars ----------------------------------------------------------------
-  const positions = new Float32Array(STAR_COUNT * 3);
-  const sizes = new Float32Array(STAR_COUNT);
-  for (let i = 0; i < STAR_COUNT; i += 1) {
-    positions[i * 3] = (Math.random() - 0.5) * FIELD.x * 2;
-    positions[i * 3 + 1] = (Math.random() - 0.5) * FIELD.y * 2;
-    positions[i * 3 + 2] = -Math.random() * FIELD.z;
-    sizes[i] = Math.random() * 0.09 + 0.03;
-  }
-  const starGeometry = new THREE.BufferGeometry();
-  starGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-  starGeometry.setAttribute('size', new THREE.BufferAttribute(sizes, 1));
-
-  const starMaterial = new THREE.PointsMaterial({
-    color: 0x9ec5ff,
-    size: 0.08,
-    sizeAttenuation: true,
-    transparent: true,
-    opacity: 0.62,
-    depthWrite: false,
-  });
-  const stars = new THREE.Points(starGeometry, starMaterial);
+  const { points: stars, geometry: starGeometry, material: starMaterial } =
+    createStarField(THREE);
   scene.add(stars);
 
   // --- Nebula glows ---------------------------------------------------------

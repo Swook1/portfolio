@@ -21,7 +21,7 @@ function glslColour(hex) {
   return `vec3(${channel(16)}, ${channel(8)}, ${channel(0)})`;
 }
 
-const VERTEX = /* glsl */ `
+export const AURORA_VERTEX = /* glsl */ `
   varying vec2 vUv;
   void main() {
     vUv = uv;
@@ -29,7 +29,7 @@ const VERTEX = /* glsl */ `
   }
 `;
 
-const FRAGMENT = /* glsl */ `
+export const AURORA_FRAGMENT = /* glsl */ `
   precision highp float;
 
   varying vec2 vUv;
@@ -129,8 +129,8 @@ export async function createAurora({ canvas }) {
   };
 
   const material = new THREE.ShaderMaterial({
-    vertexShader: VERTEX,
-    fragmentShader: FRAGMENT,
+    vertexShader: AURORA_VERTEX,
+    fragmentShader: AURORA_FRAGMENT,
     uniforms,
     transparent: true,
     depthWrite: false,

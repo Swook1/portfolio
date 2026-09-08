@@ -142,7 +142,7 @@ export default function Skills() {
           </h2>
           <p className="section-sub">
             {mode === '3d'
-              ? 'Drag to spin the cluster — hover a tile to read it'
+              ? 'Drag to spin the cluster - hover a tile to read it'
               : 'Programming languages and softwares I work with'}
           </p>
         </div>
