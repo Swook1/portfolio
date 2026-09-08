@@ -839,3 +839,76 @@ body {
   opacity: 0;
   pointer-events: none;
 }
+
+/* Stage arrows + drag affordances */
+.pj-stage {
+  /* Horizontal flicks belong to the drag; vertical stays page scrolling. */
+  touch-action: pan-y;
+}
+.pj-media {
+  position: relative;
+  will-change: transform;
+}
+.pj-media:hover .pj-arrow {
+  opacity: 1;
+}
+
+.pj-arrow {
+  position: absolute;
+  top: 50%;
+  z-index: 5;
+  display: flex;
+  height: 2.5rem;
+  width: 2.5rem;
+  transform: translateY(-50%);
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  border: 1px solid var(--border);
+  background: rgba(11, 15, 23, 0.82);
+  backdrop-filter: blur(6px);
+  color: var(--text);
+  opacity: 0;
+  transition: opacity 0.25s ease, border-color 0.25s ease, color 0.25s ease;
+}
+.pj-arrow--prev {
+  left: 0.6rem;
+}
+.pj-arrow--next {
+  right: 0.6rem;
+}
+.pj-arrow:hover,
+.pj-arrow:focus-visible {
+  opacity: 1;
+  border-color: var(--accent);
+  color: var(--accent-soft);
+}
+/* Touch has no hover, so the arrows stay visible there. */
+@media (hover: none) {
+  .pj-arrow {
+    opacity: 1;
+  }
+}
+
+/* Invisible gesture target for the stage drag. */
+.pj-drag-proxy {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  height: 1px;
+  width: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* The entrance animation owns the slot's transform, leaving the card itself
+   free for a CSS hover lift. */
+.pj-card-slot {
+  display: flex;
+}
+.pj-card-slot > .pj-card {
+  width: 100%;
+}
+.pj-card:hover {
+  transform: translateY(-3px);
+}
