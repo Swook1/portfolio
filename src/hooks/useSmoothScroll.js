@@ -4,6 +4,14 @@ import { prefersReducedMotion } from './useAnimeScope';
 import { registerScroll } from '../lib/scroll';
 
 /**
+ * Quartic ease-in-out — the curve the page travels on.
+ *
+ * Half the distance is covered in the middle fifth of the time: it leaves
+ * slowly, rushes, then eases into place.
+ */
+const quartInOut = (t) => (t < 0.5 ? 8 * t * t * t * t : 1 - (-2 * t + 2) ** 4 / 2);
+
+/**
  * Inertial scrolling for the whole page.
  *
  * Lenis intercepts the wheel and animates the document's real scroll position,
@@ -20,19 +28,21 @@ export function useSmoothScroll() {
     if (prefersReducedMotion()) return undefined;
 
     const lenis = new Lenis({
-      // Lerp, deliberately not duration+easing. Lenis prefers a duration when
-      // both are set, and a fixed duration restarts from zero on every call —
-      // which is what made repeated flicks feel like slow motion rather than
-      // momentum. A lerp chases whatever the target currently is, so re-aiming
-      // mid-flight carries the existing speed into the new move.
-      lerp: 0.06,
-      // The wheel belongs to useSectionSnap: easing it here only made the same
-      // scroll slower. Lenis stays on as the animator for the jumps it makes.
+      // Fixed duration with an ease-IN-out, not a lerp and not an ease-out.
+      // The slow start is the whole character: the page takes a beat to gather
+      // itself, accelerates through the middle, and settles. An ease-out does
+      // the opposite — all its speed up front and then a long creeping tail,
+      // which is what reads as slow motion however short you make it.
+      duration: 1.5,
+      easing: quartInOut,
+      // The wheel belongs to useSectionSnap; Lenis is the animator for the
+      // jumps it makes, not a smoother for raw wheel input.
       smoothWheel: false,
       syncTouch: false,
       // Handles every in-page anchor that isn't already intercepted.
       anchors: true,
     });
+
     registerScroll(lenis);
 
     // A deep link still has to land on its section. The browser's own jump does

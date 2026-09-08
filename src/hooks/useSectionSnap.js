@@ -2,8 +2,9 @@ import { useEffect } from 'react';
 import { prefersReducedMotion } from './useAnimeScope';
 import { getScroll } from '../lib/scroll';
 
+const DURATION_MS = 1500; // must match the Lenis duration in useSmoothScroll
 const GESTURE = 55; // px of wheel that counts as one deliberate flick
-const QUIET_MS = 110; // wheel silence that ends a gesture
+const QUIET_MS = 140; // wheel silence needed before the next flick is accepted
 const EDGE = 6; // px of slack when deciding a tall section is at its edge
 
 /** Every full-height block the page pages between, in document order. */
@@ -50,18 +51,18 @@ function scrollableAncestor(node, dir) {
 }
 
 /**
- * One flick, one section — without ever stopping the page mid-move.
+ * One flick, one section.
  *
- * The movement is a chase rather than a fixed animation: the section is a
- * target and Lenis eases the document toward it every frame. Re-aiming
- * mid-flight only moves the target, so flicking twice runs on through two
- * sections in one continuous glide instead of stopping and restarting. Nothing
- * is ever locked out — what is rate-limited is *starting a new gesture*, which
- * needs the wheel to fall quiet first, so trackpad momentum cannot spend itself
- * paging through the whole site.
+ * A move runs to completion before the next one is accepted. That is deliberate
+ * rather than a limitation: the travel is a fixed 1.5s on an ease-in-out curve,
+ * so it leaves slowly, accelerates, and settles — and interrupting it would
+ * restart that curve from zero, throwing away the speed it had built and
+ * turning the whole thing into slow motion. Trackpad momentum is swallowed
+ * while the move runs, so one flick can never spend itself paging through the
+ * whole site.
  *
  * The hook only claims the wheel when it is actually going to page; everything
- * else it hands on to Lenis, which smooths it as usual:
+ * else it hands on:
  *  - a section taller than the viewport, until it is scrolled to its own edge
  *  - anything inside its own scrollable box (the projects rail)
  *  - an open modal
@@ -75,14 +76,17 @@ export function useSectionSnap() {
     if (!window.matchMedia('(min-width: 1024px)').matches) return undefined;
 
     let travel = 0; // wheel accumulated within the current gesture
-    let armed = true; // false until the wheel goes quiet again
+    let moving = false; // a page turn is in flight
     let quiet = 0;
-    let aim = null; // section we are already heading for, while still moving
+    let watchdog = 0;
 
-    const endGesture = () => {
+    // The move is over, but the wheel usually is not: trackpad momentum runs on
+    // for a while after the fingers lift. Rearming only once it falls quiet is
+    // what keeps one flick to one section.
+    const rearmWhenQuiet = () => {
       clearTimeout(quiet);
       quiet = setTimeout(() => {
-        armed = true;
+        moving = false;
         travel = 0;
       }, QUIET_MS);
     };
@@ -98,30 +102,32 @@ export function useSectionSnap() {
 
     const go = (index) => {
       const lenis = getScroll();
-      const list = pages();
-      const target = list[index];
+      const target = pages()[index];
       if (!lenis || !target) return false;
-      // No duration and no lock: Lenis' configured lerp chases whatever the
-      // target currently is, so a second call while this one is still running
-      // re-aims it rather than cutting it off.
-      lenis.scrollTo(target);
+
+      moving = true;
+      // If onComplete never arrives — a tab hidden mid-animation, a jump with
+      // nowhere to go — the page must not be left unscrollable.
+      clearTimeout(watchdog);
+      watchdog = setTimeout(rearmWhenQuiet, DURATION_MS + 400);
+
+      lenis.scrollTo(target, {
+        // Locked for the duration: this curve is only itself when it runs start
+        // to finish, and a competing scroll mid-flight would restart it.
+        lock: true,
+        onComplete: () => {
+          clearTimeout(watchdog);
+          rearmWhenQuiet();
+        },
+      });
       return true;
     };
 
     const step = (dir) => {
-      const lenis = getScroll();
       const list = pages();
       if (!list.length) return false;
-
-      // Count from where we are HEADING, not from where the page happens to be
-      // right now. Mid-flight the nearest section is still the one we are
-      // leaving, so measuring position would make a second flick re-target the
-      // same section and the gesture would appear to do nothing.
-      const from = aim !== null && lenis?.isScrolling ? aim : currentIndex(list);
-      const next = from + dir;
+      const next = currentIndex(list) + dir;
       if (next < 0 || next >= list.length) return false;
-
-      aim = next;
       return go(next);
     };
 
@@ -150,15 +156,18 @@ export function useSectionSnap() {
       // the page would drift out of alignment between sections.
       event.preventDefault();
       event.stopPropagation();
-      endGesture();
 
-      if (!armed) return;
+      if (moving) {
+        // Momentum from the flick that started this move. Swallow it, and keep
+        // pushing the rearm back until it stops.
+        rearmWhenQuiet();
+        return;
+      }
 
       travel += event.deltaY;
       if (Math.abs(travel) < GESTURE) return;
 
       travel = 0;
-      armed = false;
       step(dir);
     };
 
@@ -175,12 +184,17 @@ export function useSectionSnap() {
 
       if (event.key === 'Home' || event.key === 'End') {
         event.preventDefault();
-        go(event.key === 'Home' ? 0 : list.length - 1);
+        if (!moving) go(event.key === 'Home' ? 0 : list.length - 1);
         return;
       }
 
       const dir = KEYS[event.key] * (event.key === ' ' && event.shiftKey ? -1 : 1);
       if (!dir) return;
+      if (moving) {
+        // Swallow it rather than letting the browser scroll under the move.
+        event.preventDefault();
+        return;
+      }
       if (scrollableAncestor(event.target, dir)) return;
       if (roomInside(list[currentIndex(list)], dir)) return;
       if (step(dir)) event.preventDefault();
@@ -191,6 +205,7 @@ export function useSectionSnap() {
 
     return () => {
       clearTimeout(quiet);
+      clearTimeout(watchdog);
       window.removeEventListener('wheel', onWheel, { capture: true });
       window.removeEventListener('keydown', onKey);
     };
