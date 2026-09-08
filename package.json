@@ -9,7 +9,8 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "assets:optimize": "node scripts/optimize-assets.mjs",
-    "assets:og": "node scripts/make-og.mjs"
+    "assets:og": "node scripts/make-og.mjs",
+    "assets:portrait": "node scripts/make-portrait.mjs"
   },
   "dependencies": {
     "animejs": "^4.5.0",

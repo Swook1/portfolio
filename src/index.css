@@ -1041,8 +1041,8 @@ html.lenis body {
 /* Phone stand-in for the portrait.
    The source is 1400x2489 — at full phone width that is a ~600px wall of image
    sitting below the copy, so below lg the photo becomes a face in the heading
-   instead: it arrives before the text rather than after it, and costs the same
-   request. object-position keeps the crop on the head. */
+   instead: it arrives before the text rather than after it, and ships as its
+   own 18KB crop instead of the 109KB portrait. */
 .about-avatar {
   display: block;
   width: 5.5rem;
@@ -1050,7 +1050,6 @@ html.lenis body {
   margin: 0 auto 1.25rem;
   border-radius: 9999px;
   object-fit: cover;
-  object-position: 50% 18%;
   border: 1px solid var(--border);
   box-shadow: 0 0 0 4px var(--accent-dim);
 }

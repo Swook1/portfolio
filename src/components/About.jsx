@@ -1,5 +1,6 @@
 import { animate, stagger } from 'animejs';
 import portrait from '../assets/picture/rayyanganteng2.webp';
+import portraitAvatar from '../assets/picture/rayyanganteng2-avatar.webp';
 import { useAnimeScope, splitReveal } from '../hooks/useAnimeScope';
 
 const paragraphs = [
@@ -81,10 +82,13 @@ export default function About() {
         </div>
 
         <div className="order-1 text-center lg:order-2 lg:text-left">
-          {/* Same file as the portrait above, so it costs no extra request. */}
+          {/* Its own crop rather than the full portrait: a phone was pulling
+              320KB to paint 88px of face. */}
           <img
-            src={portrait}
+            src={portraitAvatar}
             alt="Rayyan Zafier Leksono"
+            width="88"
+            height="88"
             loading="lazy"
             className="about-avatar anim-hidden lg:hidden"
           />
