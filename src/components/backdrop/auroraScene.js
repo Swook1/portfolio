@@ -3,6 +3,24 @@ import { createAnimatable, utils } from 'animejs';
 const FRAME_MS = 1000 / 30; // the backdrop never needs more than 30fps
 const RENDER_SCALE = 0.7; // soft gradients survive being rendered small
 
+/**
+ * The aurora's palette: three shades of the site's accent, darkest in the
+ * troughs and lightest at the crests. Edit these three values to re-tint the
+ * whole backdrop.
+ */
+const PALETTE = {
+  deep: '#1e40af',
+  mid: '#3b82f6',
+  light: '#60a5fa',
+};
+
+/** '#rrggbb' -> a GLSL vec3 literal. */
+function glslColour(hex) {
+  const n = parseInt(hex.slice(1), 16);
+  const channel = (shift) => (((n >> shift) & 255) / 255).toFixed(4);
+  return `vec3(${channel(16)}, ${channel(8)}, ${channel(0)})`;
+}
+
 const VERTEX = /* glsl */ `
   varying vec2 vUv;
   void main() {
@@ -62,12 +80,15 @@ const FRAGMENT = /* glsl */ `
     float f = fbm(p + q * 1.9 + vec2(0.0, uScroll * 0.9));
     f = pow(smoothstep(0.15, 0.85, f), 1.4); // tighten the bands
 
-    vec3 accent = vec3(0.231, 0.510, 0.965); // #3b82f6
-    vec3 violet = vec3(0.486, 0.227, 0.929); // #7c3aed
-    vec3 cyan   = vec3(0.055, 0.647, 0.914); // #0ea5e9
+    vec3 deep  = ${glslColour(PALETTE.deep)};
+    vec3 mid   = ${glslColour(PALETTE.mid)};
+    vec3 light = ${glslColour(PALETTE.light)};
 
-    vec3 colour = mix(accent, violet, smoothstep(0.25, 0.85, f));
-    colour = mix(colour, cyan, smoothstep(0.6, 1.0, q.x) * 0.65);
+    // One hue family, so the depth has to come from value rather than hue:
+    // troughs sit in the deep shade, crests lift toward the light one.
+    vec3 colour = mix(deep, mid, smoothstep(0.05, 0.6, f));
+    colour = mix(colour, light, smoothstep(0.55, 1.0, f) * 0.85);
+    colour = mix(colour, light, smoothstep(0.7, 1.0, q.x) * 0.2);
 
     // Low on purpose: body copy sits on top of this.
     float alpha = f * 0.4;
