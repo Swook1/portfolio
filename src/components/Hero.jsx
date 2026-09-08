@@ -86,6 +86,8 @@ export default function Hero() {
               <span className="portrait-corner portrait-corner--br" />
             </div>
 
+            <span className="portrait-ground" aria-hidden="true" />
+
             <img
               src={person}
               alt="Portrait of Rayyan Zafier Leksono"
