@@ -11,7 +11,7 @@ import {
 } from 'animejs';
 import { projects } from '../data/projects';
 import { github, browser } from '../data/icons';
-import { useAnimeScope, prefersReducedMotion } from '../hooks/useAnimeScope';
+import { useAnimeScope, prefersReducedMotion, splitReveal } from '../hooks/useAnimeScope';
 import YouTubeFacade from './ui/YouTubeFacade';
 
 const ORBIT_DURATION = 1000; // arbitrary length; scroll position seeks it
@@ -101,7 +101,7 @@ export default function Projects() {
       autoplay: false,
     });
 
-    return [head, ring, cards, enter];
+    return [head, splitReveal('.section-title', { start: 120 }), ring, cards, enter];
   });
 
   // Track visibility for two things: loading the embed, and only letting the

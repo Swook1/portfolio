@@ -1,5 +1,23 @@
 import { useEffect, useRef } from 'react';
-import { createScope } from 'animejs';
+import { animate, createScope, createSpring, stagger, text } from 'animejs';
+
+/**
+ * Splits a heading into characters and returns a paused animation that
+ * assembles them. Call it inside a scope setup: TextSplitter registers with
+ * the scope, so revert() puts the original markup back.
+ */
+export function splitReveal(target, { charDelay = 20, start = 0 } = {}) {
+  const split = text.splitText(target, { chars: true, words: false });
+  return animate(split.chars, {
+    opacity: [0, 1],
+    y: [26, 0],
+    rotate: [-12, 0],
+    duration: 700,
+    delay: stagger(charDelay, { start }),
+    ease: createSpring({ stiffness: 120, damping: 16 }),
+    autoplay: false,
+  });
+}
 
 /** True when the visitor asked the OS to reduce motion. */
 export function prefersReducedMotion() {

@@ -1,6 +1,6 @@
 import { animate, stagger } from 'animejs';
 import portrait from '../assets/picture/rayyanganteng2.webp';
-import { useAnimeScope } from '../hooks/useAnimeScope';
+import { useAnimeScope, splitReveal } from '../hooks/useAnimeScope';
 
 const paragraphs = [
   "I'm an Indonesian developer based in Jakarta. I believe I can reach my goal as a developer, and I'm committed to learning and to taking other people's input on board.",
@@ -39,6 +39,7 @@ export default function About() {
       ease: 'out(3)',
       autoplay: false,
     }),
+    splitReveal('.section-title', { start: 150 }),
     animate('.about-detail', {
       opacity: [0, 1],
       y: [18, 0],
@@ -72,7 +73,7 @@ export default function About() {
 
         <div className="order-1 text-center lg:order-2 lg:text-left">
           <span className="about-step anim-hidden eyebrow">About</span>
-          <h2 className="about-step anim-hidden section-title mt-5">
+          <h2 className="section-title mt-5">
             A little more <span className="text-accent">about me</span>
           </h2>
 
