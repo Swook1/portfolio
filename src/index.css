@@ -428,6 +428,10 @@ body {
 }
 
 .pj-rail {
+  /* Above the stage in paint order: the rail is the section's only control
+     surface, and nothing from the stage column may end up over it. */
+  position: relative;
+  z-index: 2;
   display: flex;
   gap: 0.75rem;
   overflow-x: auto;
@@ -461,6 +465,7 @@ body {
 
 .pj-card {
   flex: 0 0 auto;
+  will-change: transform, opacity;
   width: 15rem;
   scroll-snap-align: start;
   display: flex;
@@ -471,7 +476,9 @@ body {
   background: var(--surface);
   padding: 0.6rem;
   text-align: left;
-  transition: border-color 0.25s ease, background 0.25s ease, transform 0.25s ease;
+  /* No transform here: the rail depth pass writes it every frame, and a
+     transition on it would lag a finger dragging the rail. */
+  transition: border-color 0.25s ease, background 0.25s ease, box-shadow 0.25s ease;
 }
 @media (min-width: 1024px) {
   .pj-card {
@@ -579,6 +586,10 @@ body {
   font-size: 1.15rem;
   font-weight: 700;
   color: var(--accent);
+}
+.pj-counter b {
+  font-variant-numeric: tabular-nums;
+  font-weight: inherit;
 }
 .pj-counter i {
   font-size: 0.75rem;
@@ -732,21 +743,24 @@ html.lenis body {
   overflow: hidden;
 }
 
-/* WebGL slide transition, drawn over the embed only while a flip is running. */
-.pj-fx {
+/* Ambient WebGL lattice behind the Projects section. Faded in by the scene
+   itself once it has a context; the mask keeps it from ending in a hard edge
+   against the neighbouring sections. */
+.pj-field {
   position: absolute;
   inset: 0;
-  z-index: 4;
+  z-index: 0;
   height: 100%;
   width: 100%;
   opacity: 0;
   pointer-events: none;
-  transition: opacity 0.25s ease;
+  -webkit-mask-image: radial-gradient(120% 85% at 50% 45%, #000 35%, transparent 78%);
+  mask-image: radial-gradient(120% 85% at 50% 45%, #000 35%, transparent 78%);
 }
-.pj-fx.is-live {
+.pj-field.is-live {
   opacity: 1;
-  transition: none;
 }
+
 .project-frame:hover {
   border-color: var(--accent);
   box-shadow: 0 30px 60px -30px var(--accent);
@@ -832,6 +846,9 @@ html.lenis body {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .pj-field {
+    display: none;
+  }
   .bd-dot,
   .bd-blob-c {
     display: none;
@@ -944,7 +961,7 @@ html.lenis body {
   width: 100%;
 }
 .pj-card:hover {
-  transform: translateY(-3px);
+  box-shadow: 0 14px 30px -18px var(--accent);
 }
 
 /* CTA hover: a fixed 2px lift and a glow, deliberately not a magnetic pull.

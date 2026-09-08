@@ -19,8 +19,6 @@ const ORBIT_DURATION = 1000; // arbitrary length; scroll position seeks it
 const DRAG_STEP = 120; // px of drag that counts as one project
 
 const poster = (videoId) => `https://i.ytimg.com/vi/${videoId}/mqdefault.jpg`;
-// The same file the facade shows, so the transition draws from cache.
-const stagePoster = (videoId) => `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`;
 
 /**
  * A showcase rather than a list: one stage plus a rail of every project.
@@ -41,9 +39,9 @@ export default function Projects() {
   const cardRefs = useRef([]);
   const firstRender = useRef(true);
   const onScreen = useRef(false);
-  const fx = useRef(null);
-  const slider = useRef(null);
-  const shownId = useRef(projects[0].youtubeId);
+  const field = useRef(null);
+  const lattice = useRef(null);
+  const counter = useRef(null);
 
   const active = selection.index;
   const project = projects[active];
@@ -210,63 +208,176 @@ export default function Projects() {
     };
   }, [selection]);
 
-  // three.js slide transition. Loaded only once the section has been reached,
-  // and never on reduced motion or without WebGL — the stage's anime.js slide
-  // is complete on its own, this layers a 3D flip on top of it.
+  // Ambient lattice behind the whole section. Never on reduced motion or
+  // without WebGL, plus a width gate: a full-section particle field is not what
+  // a phone should spend its frame on when the rail and the stage already move.
   useEffect(() => {
     if (!seen) return undefined;
     if (prefersReducedMotion() || !webglAvailable()) return undefined;
+    if (!window.matchMedia('(min-width: 768px)').matches) return undefined;
 
     let cancelled = false;
     (async () => {
       try {
-        const { createSlideTransition } = await import('./projects/slideScene');
-        if (cancelled || !fx.current) return;
-        const scene = await createSlideTransition({ canvas: fx.current });
+        const { createField } = await import('./projects/fieldScene');
+        if (cancelled || !field.current) return;
+        const scene = await createField({ canvas: field.current });
         if (cancelled) {
           scene.dispose();
           return;
         }
-        slider.current = scene;
-        scene.prewarm(projects.map((item) => stagePoster(item.youtubeId)));
+        lattice.current = scene;
+        field.current.classList.add('is-live');
+        scene.setActive(true);
+        scene.fadeIn();
       } catch {
-        // A context can still fail after the capability check; the stage just
-        // switches without the flip.
+        // Context creation can still fail after the capability check; the
+        // section simply keeps its flat background.
       }
     })();
 
     return () => {
       cancelled = true;
-      slider.current?.dispose();
-      slider.current = null;
+      lattice.current?.dispose();
+      lattice.current = null;
     };
   }, [seen]);
 
-  // Cover the switch with the flip. This also hides the gap where the embed is
-  // torn down and remounted, which used to show as a blink.
+  // The lattice only renders while it is worth rendering: on screen, and in a
+  // tab the visitor is actually looking at.
   useEffect(() => {
-    const from = shownId.current;
-    const to = project.youtubeId;
-    shownId.current = to;
+    const el = section.current;
+    if (!el) return undefined;
 
-    const scene = slider.current;
-    const canvas = fx.current;
-    if (!scene || !canvas || from === to) return undefined;
+    const sync = () => lattice.current?.setActive(onScreen.current && !document.hidden);
+    const observer = new IntersectionObserver(sync, { threshold: 0 });
+    observer.observe(el);
+    document.addEventListener('visibilitychange', sync);
 
-    let cancelled = false;
-    canvas.classList.add('is-live');
-    scene.resize();
-    scene
-      .play(stagePoster(from), stagePoster(to), selection.dir)
-      .finally(() => {
-        if (!cancelled) canvas.classList.remove('is-live');
-      });
-
-    return () => {
-      cancelled = true;
-      canvas.classList.remove('is-live');
+    const onMove = (event) => {
+      const scene = lattice.current;
+      if (!scene) return;
+      const rect = el.getBoundingClientRect();
+      scene.setPointer(
+        (event.clientX - rect.left) / rect.width,
+        (event.clientY - rect.top) / rect.height
+      );
     };
-  }, [selection, project.youtubeId]);
+    const onLeave = () => lattice.current?.setPointer(null);
+
+    el.addEventListener('pointermove', onMove);
+    el.addEventListener('pointerleave', onLeave);
+    return () => {
+      observer.disconnect();
+      document.removeEventListener('visibilitychange', sync);
+      el.removeEventListener('pointermove', onMove);
+      el.removeEventListener('pointerleave', onLeave);
+    };
+  }, []);
+
+  // Every switch throws a ring across the lattice from the side the new
+  // project arrived from, so the section reacts as a whole and not only inside
+  // the video frame.
+  useEffect(() => {
+    lattice.current?.pulse(selection.dir);
+  }, [selection]);
+
+  // The counter counts rather than cuts, and wraps the short way round so
+  // going 04 -> 01 rolls forward instead of spinning back through the list.
+  useEffect(() => {
+    const el = counter.current;
+    if (!el) return undefined;
+    if (prefersReducedMotion()) {
+      el.textContent = String(active + 1).padStart(2, '0');
+      return undefined;
+    }
+
+    const shown = Number(el.textContent) || active + 1;
+    const target = active + 1;
+    // Roll in the direction of travel even across the wrap: going 04 -> 01
+    // forwards counts up past the end rather than spinning all the way back.
+    let from = shown;
+    if (selection.dir > 0 && target < shown) from = shown - total;
+    if (selection.dir < 0 && target > shown) from = shown + total;
+
+    const roll = animate(
+      { n: from },
+      {
+        n: target,
+        duration: 420,
+        ease: 'out(3)',
+        onUpdate: (self) => {
+          const raw = Math.round(self.targets[0].n);
+          el.textContent = String(((raw - 1 + total * 2) % total) + 1).padStart(2, '0');
+        },
+        onComplete: () => {
+          el.textContent = String(target).padStart(2, '0');
+        },
+      }
+    );
+    return () => roll.pause();
+  }, [active, selection, total]);
+
+  // Depth in the rail: cards fall away from whichever end of the rail is in
+  // view, so scrolling it reads as a stack turning rather than a list sliding.
+  // Driven straight off scroll position — no tween — so it tracks the finger.
+  useEffect(() => {
+    if (prefersReducedMotion()) return undefined;
+    const track = rail.current;
+    if (!track) return undefined;
+    const cards = cardRefs.current;
+
+    let frame = 0;
+    const render = () => {
+      frame = 0;
+      const box = track.getBoundingClientRect();
+      const column = getComputedStyle(track).flexDirection === 'column';
+      const scrollable = column
+        ? track.scrollHeight > track.clientHeight + 4
+        : track.scrollWidth > track.clientWidth + 4;
+
+      // A rail short enough to show every card at once has no ends to fall
+      // away towards, and dimming its outer cards would only make a complete
+      // list look half-disabled.
+      if (!scrollable) {
+        for (const card of cards) {
+          if (card) utils.set(card, { scale: 1, opacity: 1 });
+        }
+        return;
+      }
+
+      for (const card of cards) {
+        if (!card) continue;
+        const rect = card.getBoundingClientRect();
+        // Distance from the middle of the rail, in card-lengths.
+        const offset = column
+          ? (rect.top + rect.height / 2 - (box.top + box.height / 2)) / box.height
+          : (rect.left + rect.width / 2 - (box.left + box.width / 2)) / box.width;
+        const away = utils.clamp(Math.abs(offset) * 2, 0, 1);
+
+        // Scale and opacity only. Turning the cards in 3D looked good and made
+        // them miserable to hit: a rotated card's visible face no longer lines
+        // up with where a pointer expects it.
+        utils.set(card, {
+          scale: 1 - away * 0.07,
+          opacity: 1 - away * 0.4,
+        });
+      }
+    };
+    const request = () => {
+      if (!frame) frame = requestAnimationFrame(render);
+    };
+
+    render();
+    track.addEventListener('scroll', request, { passive: true });
+    window.addEventListener('resize', request);
+    return () => {
+      if (frame) cancelAnimationFrame(frame);
+      track.removeEventListener('scroll', request);
+      window.removeEventListener('resize', request);
+      cards.forEach((card) => card && utils.remove(card));
+    };
+  }, []);
 
   // Keep the selected card in view in the rail, whichever way it scrolls.
   //
@@ -407,7 +518,11 @@ export default function Projects() {
       id="projects"
       className="section-tint relative overflow-hidden py-20 lg:py-28"
     >
-      <div className="section-shell">
+      {/* Ambient lattice. Behind everything in the section, and inert until
+          the section is reached. */}
+      <canvas ref={field} className="pj-field" aria-hidden="true" />
+
+      <div className="section-shell relative z-10">
         <div className="relative">
           <svg className="orbit" viewBox="0 0 300 300" aria-hidden="true">
             <circle className="orbit-path" cx="150" cy="150" r="128" />
@@ -417,7 +532,7 @@ export default function Projects() {
           <div className="projects-head anim-hidden relative text-center">
             <span className="eyebrow">Work</span>
             <h2 className="section-title mt-5">My Projects</h2>
-            <p className="section-sub">Drag, swipe or use the arrow keys — {total} and counting</p>
+            <p className="section-sub">Drag, swipe or use the arrow keys</p>
           </div>
         </div>
 
@@ -465,7 +580,6 @@ export default function Projects() {
                     autoPlay={seen}
                   />
                 </div>
-                <canvas ref={fx} className="pj-fx" aria-hidden="true" />
               </div>
 
               <button
@@ -502,7 +616,10 @@ export default function Projects() {
 
             <div className="pj-info">
               <span className="pj-swap pj-counter">
-                {String(active + 1).padStart(2, '0')}
+                {/* Constant on purpose: the effect below owns this text from
+                    the first switch onward, and a React re-render writing the
+                    new number would land before the roll ever started. */}
+                <b ref={counter}>01</b>
                 <i>/ {String(total).padStart(2, '0')}</i>
               </span>
 
