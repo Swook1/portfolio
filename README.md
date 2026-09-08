@@ -1,13 +1,43 @@
-# React + Vite
+# Portfolio — v2
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Personal portfolio of Rayyan Zafier Leksono. Single page, dark theme, animated with anime.js.
 
-Currently, two official plugins are available:
+## Stack
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- React 19 + Vite 6
+- Tailwind CSS 3 (colors and fonts come from CSS variables in `src/index.css`)
+- anime.js v4 for every animation (entrance timelines, scroll reveals, carousel transitions)
 
-## Expanding the ESLint configuration
+## Structure
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
-"" 
+```
+src/
+  App.jsx                 # section composition
+  index.css               # theme tokens, component classes, reduced-motion rules
+  data/                   # skills, projects, certificates, socials, icons
+  hooks/useAnimeScope.js  # anime.js scope + scroll-reveal helper
+  components/             # Navbar, Hero, About, Skills, Projects, Certificates, Footer
+    ui/                   # CertificateModal, YouTubeFacade
+  assets/                 # WebP images + SVG icons
+```
+
+## Scripts
+
+```bash
+npm run dev              # dev server
+npm run build            # production build to dist/
+npm run preview          # preview the build
+npm run lint             # eslint
+npm run assets:optimize  # re-encode src/assets to WebP (needs raster originals)
+npm run assets:og        # regenerate public/og-image.jpg
+```
+
+## Theming
+
+All colors live as CSS variables on `:root` in `src/index.css`. Changing `--accent`
+re-skins the whole site.
+
+## Deploy
+
+Vercel, framework preset Vite, build `npm run build`, output `dist`, base path `/`.
+Production domain: `rayyanzafier.web.id`.
