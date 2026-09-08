@@ -33,8 +33,8 @@ export default function Footer() {
     <footer
       ref={root}
       id="footer"
-      className="relative border-t pt-14"
-      style={{ background: 'var(--bg-alt)', borderColor: 'var(--border)' }}
+      className="section-tint relative border-t pt-14"
+      style={{ borderColor: 'var(--border)' }}
     >
       <div className="section-shell">
         <div className="flex flex-col justify-between gap-10 lg:flex-row">

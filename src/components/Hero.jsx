@@ -27,20 +27,12 @@ export default function Hero() {
     <section
       ref={root}
       id="home"
-      className="noise relative flex min-h-screen items-center overflow-hidden pb-16 pt-28 lg:pb-0 lg:pt-24"
+      className="relative flex min-h-screen items-center overflow-hidden pb-16 pt-28 lg:pb-0 lg:pt-24"
     >
-      {/* Ambient backdrop — deliberately behind the portrait panel, never on it. */}
       <div
-        className="blob -left-32 top-24 h-[420px] w-[420px]"
-        style={{ background: 'var(--accent)' }}
-      />
-      <div
-        className="blob right-[-10%] top-1/4 h-[380px] w-[380px]"
-        style={{ background: '#7c3aed', opacity: 0.18 }}
-      />
-      <div className="hero-grid" aria-hidden="true" />
-
-      <div className="section-shell grid items-center gap-12 lg:grid-cols-[1.05fr_0.95fr] lg:gap-8">
+        data-scroll-fade
+        className="section-shell grid items-center gap-12 lg:grid-cols-[1.05fr_0.95fr] lg:gap-8"
+      >
         <div className="flex flex-col justify-center gap-6 text-center lg:text-left">
           <span className="hero-eyebrow anim-hidden eyebrow mx-auto w-fit self-center lg:mx-0 lg:self-start">
             Hi There,

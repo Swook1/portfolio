@@ -148,8 +148,8 @@ body {
   .anim-hidden {
     opacity: 1 !important;
   }
-  .blob {
-    display: none;
+  .bd-layer {
+    transform: none !important;
   }
 }
 
@@ -378,4 +378,76 @@ body {
   border-radius: 1.5rem;
   border: 1px solid var(--accent);
   opacity: 0.45;
+}
+
+/* --- Global animated backdrop --- */
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+/* Oversized so scroll parallax never drags an edge into view. */
+.bd-layer {
+  position: absolute;
+  inset: -25% -10%;
+  will-change: transform;
+}
+
+.bd-blob-a,
+.bd-blob-b,
+.bd-blob-c {
+  opacity: 0.22;
+}
+.bd-blob-a {
+  left: 4%;
+  top: 12%;
+  height: 460px;
+  width: 460px;
+  background: var(--accent);
+}
+.bd-blob-b {
+  right: 2%;
+  top: 38%;
+  height: 420px;
+  width: 420px;
+  background: #7c3aed;
+}
+.bd-blob-c {
+  left: 30%;
+  bottom: 8%;
+  height: 380px;
+  width: 380px;
+  background: #0ea5e9;
+  opacity: 0.16;
+}
+
+.bd-grid {
+  opacity: 0.45;
+  background-image: linear-gradient(var(--border) 1px, transparent 1px),
+    linear-gradient(90deg, var(--border) 1px, transparent 1px);
+  background-size: 72px 72px;
+  mask-image: radial-gradient(ellipse 65% 55% at 50% 40%, #000 0%, transparent 78%);
+  -webkit-mask-image: radial-gradient(ellipse 65% 55% at 50% 40%, #000 0%, transparent 78%);
+}
+
+.bd-dot {
+  position: absolute;
+  border-radius: 9999px;
+  background: var(--accent-soft);
+  opacity: 0.15;
+}
+
+/* Sections that used to be opaque now let the backdrop show through. */
+.section-tint {
+  background: rgba(17, 24, 39, 0.72);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bd-dot,
+  .bd-blob-c {
+    display: none;
+  }
 }

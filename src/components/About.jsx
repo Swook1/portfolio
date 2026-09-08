@@ -53,14 +53,8 @@ export default function About() {
     <section
       ref={root}
       id="about"
-      className="relative flex min-h-screen items-center overflow-hidden py-28"
-      style={{ background: 'var(--bg-alt)' }}
+      className="section-tint relative flex min-h-screen items-center overflow-hidden py-28"
     >
-      <div
-        className="blob left-[-8%] top-1/3 h-[360px] w-[360px]"
-        style={{ background: 'var(--accent)', opacity: 0.12 }}
-      />
-
       <div className="section-shell grid items-center gap-14 lg:grid-cols-[0.85fr_1.15fr] lg:gap-16">
         {/* Photo, framed and still. */}
         <div className="order-2 flex justify-center lg:order-1 lg:justify-start">

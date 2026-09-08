@@ -1,3 +1,4 @@
+import Backdrop from './components/Backdrop';
 import Navbar from './components/Navbar';
 import Hero from './components/Hero';
 import About from './components/About';
@@ -5,8 +6,11 @@ import Skills from './components/Skills';
 import Projects from './components/Projects';
 import Certificates from './components/Certificates';
 import Footer from './components/Footer';
+import { useScrollFx } from './hooks/useScrollFx';
 
 export default function App() {
+  useScrollFx();
+
   return (
     <>
       <a
@@ -15,6 +19,7 @@ export default function App() {
       >
         Skip to content
       </a>
+      <Backdrop />
       <Navbar />
       <main>
         <Hero />

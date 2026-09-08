@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { animate } from 'animejs';
+import { animate, stagger } from 'animejs';
 import { certificates } from '../data/certificates';
 import { useAnimeScope, prefersReducedMotion } from '../hooks/useAnimeScope';
 import CertificateModal from './ui/CertificateModal';
@@ -42,6 +42,14 @@ export default function Certificates() {
       opacity: [0, 1],
       y: [40, 0],
       duration: 800,
+      ease: 'out(3)',
+      autoplay: false,
+    }),
+    animate('.cert-caption', {
+      opacity: [0, 1],
+      y: [20, 0],
+      duration: 700,
+      delay: stagger(120, { start: 350 }),
       ease: 'out(3)',
       autoplay: false,
     }),
@@ -176,7 +184,7 @@ export default function Certificates() {
           </button>
         </div>
 
-        <div className="mx-auto mt-8 max-w-xl">
+        <div className="cert-caption anim-hidden mx-auto mt-8 max-w-xl">
           <h3 className="font-display text-base font-semibold sm:text-lg">
             {certificates[current].title}
           </h3>
@@ -185,7 +193,7 @@ export default function Certificates() {
           </p>
         </div>
 
-        <div className="mt-6 flex justify-center gap-2">
+        <div className="cert-caption anim-hidden mt-6 flex justify-center gap-2">
           {certificates.map((cert, i) => (
             <button
               key={cert.id}

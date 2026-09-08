@@ -118,8 +118,7 @@ export default function Projects() {
     <section
       ref={root}
       id="projects"
-      className="relative py-24"
-      style={{ background: 'var(--bg-alt)' }}
+      className="section-tint relative py-24"
     >
       <div className="section-shell">
         <div className="projects-head anim-hidden text-center">

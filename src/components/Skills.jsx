@@ -69,7 +69,7 @@ export default function Skills() {
         </div>
 
         <div className="relative mt-16">
-          <div className="skill-rings" aria-hidden="true">
+          <div className="skill-rings" data-parallax="0.04" aria-hidden="true">
             <span />
             <span />
             <span />

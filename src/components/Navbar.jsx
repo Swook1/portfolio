@@ -173,6 +173,14 @@ export default function Navbar() {
         </button>
       </div>
 
+      {/* Scroll progress */}
+      {/* <span
+        id="scroll-progress"
+        aria-hidden="true"
+        className="absolute bottom-0 left-0 h-px w-full origin-left bg-accent"
+        style={{ transform: 'scaleX(0)' }}
+      /> */}
+
       {/* Mobile panel */}
       <div
         ref={mobilePanel}
