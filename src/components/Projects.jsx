@@ -12,12 +12,15 @@ import {
 import { projects } from '../data/projects';
 import { github, browser } from '../data/icons';
 import { useAnimeScope, prefersReducedMotion, splitReveal } from '../hooks/useAnimeScope';
+import { webglAvailable } from '../lib/webgl';
 import YouTubeFacade from './ui/YouTubeFacade';
 
 const ORBIT_DURATION = 1000; // arbitrary length; scroll position seeks it
 const DRAG_STEP = 120; // px of drag that counts as one project
 
 const poster = (videoId) => `https://i.ytimg.com/vi/${videoId}/mqdefault.jpg`;
+// The same file the facade shows, so the transition draws from cache.
+const stagePoster = (videoId) => `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`;
 
 /**
  * A showcase rather than a list: one stage plus a rail of every project.
@@ -38,6 +41,9 @@ export default function Projects() {
   const cardRefs = useRef([]);
   const firstRender = useRef(true);
   const onScreen = useRef(false);
+  const fx = useRef(null);
+  const slider = useRef(null);
+  const shownId = useRef(projects[0].youtubeId);
 
   const active = selection.index;
   const project = projects[active];
@@ -203,6 +209,64 @@ export default function Projects() {
       splitter?.revert();
     };
   }, [selection]);
+
+  // three.js slide transition. Loaded only once the section has been reached,
+  // and never on reduced motion or without WebGL — the stage's anime.js slide
+  // is complete on its own, this layers a 3D flip on top of it.
+  useEffect(() => {
+    if (!seen) return undefined;
+    if (prefersReducedMotion() || !webglAvailable()) return undefined;
+
+    let cancelled = false;
+    (async () => {
+      try {
+        const { createSlideTransition } = await import('./projects/slideScene');
+        if (cancelled || !fx.current) return;
+        const scene = await createSlideTransition({ canvas: fx.current });
+        if (cancelled) {
+          scene.dispose();
+          return;
+        }
+        slider.current = scene;
+        scene.prewarm(projects.map((item) => stagePoster(item.youtubeId)));
+      } catch {
+        // A context can still fail after the capability check; the stage just
+        // switches without the flip.
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+      slider.current?.dispose();
+      slider.current = null;
+    };
+  }, [seen]);
+
+  // Cover the switch with the flip. This also hides the gap where the embed is
+  // torn down and remounted, which used to show as a blink.
+  useEffect(() => {
+    const from = shownId.current;
+    const to = project.youtubeId;
+    shownId.current = to;
+
+    const scene = slider.current;
+    const canvas = fx.current;
+    if (!scene || !canvas || from === to) return undefined;
+
+    let cancelled = false;
+    canvas.classList.add('is-live');
+    scene.resize();
+    scene
+      .play(stagePoster(from), stagePoster(to), selection.dir)
+      .finally(() => {
+        if (!cancelled) canvas.classList.remove('is-live');
+      });
+
+    return () => {
+      cancelled = true;
+      canvas.classList.remove('is-live');
+    };
+  }, [selection, project.youtubeId]);
 
   // Keep the selected card in view in the rail, whichever way it scrolls.
   //
@@ -401,6 +465,7 @@ export default function Projects() {
                     autoPlay={seen}
                   />
                 </div>
+                <canvas ref={fx} className="pj-fx" aria-hidden="true" />
               </div>
 
               <button

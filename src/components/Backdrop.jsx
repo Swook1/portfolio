@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { animate, stagger } from 'animejs';
 import { useAnimeScope, prefersReducedMotion } from '../hooks/useAnimeScope';
+import { webglAvailable } from '../lib/webgl';
 
 /**
  * Deterministic star field. Positions are fixed constants rather than
@@ -13,15 +14,6 @@ const DOTS = Array.from({ length: 42 }, (_, i) => {
   const size = 1 + (i % 3);
   return { x, y, size, i };
 });
-
-function webglAvailable() {
-  try {
-    const canvas = document.createElement('canvas');
-    return Boolean(window.WebGLRenderingContext && canvas.getContext('webgl2'));
-  } catch {
-    return false;
-  }
-}
 
 /**
  * One fixed layer behind the whole page, at z-index -1 so the document
