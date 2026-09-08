@@ -14,11 +14,17 @@ import { github, browser } from '../data/icons';
 import { useAnimeScope, prefersReducedMotion, splitReveal } from '../hooks/useAnimeScope';
 import { webglAvailable } from '../lib/webgl';
 import YouTubeFacade from './ui/YouTubeFacade';
+import ImageGallery from './ui/ImageGallery';
 
 const ORBIT_DURATION = 1000; // arbitrary length; scroll position seeks it
 const DRAG_STEP = 120; // px of drag that counts as one project
 
-const poster = (videoId) => `https://i.ytimg.com/vi/${videoId}/mqdefault.jpg`;
+// A project is shown either as a clip or as a set of stills; the rail card
+// takes its thumbnail from whichever one it has.
+const poster = (item) =>
+  item.youtubeId
+    ? `https://i.ytimg.com/vi/${item.youtubeId}/mqdefault.jpg`
+    : item.images[0].thumb ?? item.images[0].src;
 
 /**
  * A showcase rather than a list: one stage plus a rail of every project.
@@ -29,6 +35,9 @@ export default function Projects() {
   // `dir` is which way the last move went, so the incoming project can enter
   // from the side it came from instead of every switch looking identical.
   const [selection, setSelection] = useState({ index: 0, dir: 1 });
+  // Which screenshot the stage shows, for projects that are stills rather than
+  // a clip. Kept here because the stage arrows page through it.
+  const [shot, setShot] = useState(0);
   const [seen, setSeen] = useState(false);
 
   const section = useRef(null);
@@ -46,6 +55,7 @@ export default function Projects() {
   const active = selection.index;
   const project = projects[active];
   const total = projects.length;
+  const shots = project.images?.length ?? 0;
 
   const goTo = useCallback(
     (next, direction) =>
@@ -63,6 +73,15 @@ export default function Projects() {
   const goPrev = useCallback(
     () => setSelection((p) => ({ index: (p.index - 1 + total) % total, dir: -1 })),
     [total]
+  );
+
+  // Every project starts on its first shot, so switching back to one never
+  // opens on the screenshot that happened to be up when it was left.
+  useEffect(() => setShot(0), [active]);
+
+  const shotBy = useCallback(
+    (step) => setShot((s) => (s + step + shots) % shots),
+    [shots]
   );
 
   const root = useAnimeScope(() => {
@@ -451,6 +470,18 @@ export default function Projects() {
     const media = host.querySelector('.pj-media');
     if (!proxy || !media) return undefined;
 
+    // The draggable claims every press inside the stage, and it kills the
+    // click that would have followed: on the first mouse move it drops
+    // pointer-events on the trigger, so mouseup lands on another element and
+    // no click is ever dispatched. A pixel of jitter is enough. The controls
+    // that live inside the stage are clicked, not dragged, so their presses
+    // are stopped in capture before the trigger's own listener sees them.
+    const shield = (event) => {
+      if (event.target.closest?.('.pj-arrow, .pj-shot-dot')) event.stopPropagation();
+    };
+    host.addEventListener('mousedown', shield, true);
+    host.addEventListener('touchstart', shield, true);
+
     const drag = createDraggable(proxy, {
       trigger: host,
       y: false,
@@ -478,7 +509,11 @@ export default function Projects() {
       },
     });
 
-    return () => drag.revert();
+    return () => {
+      host.removeEventListener('mousedown', shield, true);
+      host.removeEventListener('touchstart', shield, true);
+      drag.revert();
+    };
   }, [active, goTo]);
 
   // Media frame leans toward the pointer.
@@ -558,7 +593,7 @@ export default function Projects() {
                   className={`pj-card ${i === active ? 'is-active' : ''}`}
                 >
                   <span className="pj-card-thumb">
-                    <img src={poster(item.youtubeId)} alt="" aria-hidden="true" loading="lazy" />
+                    <img src={poster(item)} alt="" aria-hidden="true" loading="lazy" />
                     <span className="pj-card-num">{String(i + 1).padStart(2, '0')}</span>
                   </span>
                   <span className="pj-card-body">
@@ -581,45 +616,64 @@ export default function Projects() {
             <div className="pj-media">
               <div ref={tilt} className="project-frame card overflow-hidden">
                 <div className="aspect-video">
-                  <YouTubeFacade
-                    key={project.youtubeId}
-                    videoId={project.youtubeId}
-                    title={project.title}
-                    autoPlay={seen}
-                  />
+                  {project.youtubeId ? (
+                    <YouTubeFacade
+                      key={project.youtubeId}
+                      videoId={project.youtubeId}
+                      title={project.title}
+                      autoPlay={seen}
+                    />
+                  ) : (
+                    <ImageGallery
+                      key={project.id}
+                      images={project.images}
+                      title={project.title}
+                      index={Math.min(shot, shots - 1)}
+                      onIndex={setShot}
+                      autoPlay={seen}
+                    />
+                  )}
                 </div>
               </div>
 
-              <button
-                type="button"
-                onClick={goPrev}
-                aria-label="Previous project"
-                className="pj-arrow pj-arrow--prev"
-              >
-                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M15 19l-7-7 7-7"
-                  />
-                </svg>
-              </button>
-              <button
-                type="button"
-                onClick={goNext}
-                aria-label="Next project"
-                className="pj-arrow pj-arrow--next"
-              >
-                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M9 5l7 7-7 7"
-                  />
-                </svg>
-              </button>
+              {/* The arrows page through the screenshots of the project on
+                  the stage, so they only exist where there is more than one.
+                  Moving between projects is the rail's job, plus dragging the
+                  stage and the arrow keys. */}
+              {shots > 1 && (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => shotBy(-1)}
+                    aria-label="Previous screenshot"
+                    className="pj-arrow pj-arrow--prev"
+                  >
+                    <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M15 19l-7-7 7-7"
+                      />
+                    </svg>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => shotBy(1)}
+                    aria-label="Next screenshot"
+                    className="pj-arrow pj-arrow--next"
+                  >
+                    <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M9 5l7 7-7 7"
+                      />
+                    </svg>
+                  </button>
+                </>
+              )}
             </div>
 
             <div className="pj-info">
@@ -653,15 +707,17 @@ export default function Projects() {
               </div>
 
               <div className="pj-swap pj-actions">
-                <a
-                  href={project.githubUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="btn btn-ghost"
-                >
-                  <img src={github} alt="" aria-hidden="true" className="h-5 w-5" />
-                  View on GitHub
-                </a>
+                {project.githubUrl && (
+                  <a
+                    href={project.githubUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="btn btn-ghost"
+                  >
+                    <img src={github} alt="" aria-hidden="true" className="h-5 w-5" />
+                    View on GitHub
+                  </a>
+                )}
                 {project.websiteUrl && (
                   <a
                     href={project.websiteUrl}

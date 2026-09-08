@@ -780,6 +780,62 @@ html.lenis body {
   transform: scale(1.1);
 }
 
+/* Stills stack for projects shown as screenshots instead of a clip. Every
+   shot sits in the same box and only the current one is visible, so the frame
+   never resizes between them. */
+.pj-shots {
+  position: relative;
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+  background: var(--bg);
+}
+
+.pj-shot {
+  position: absolute;
+  inset: 0;
+  height: 100%;
+  width: 100%;
+  object-fit: cover;
+  object-position: top center;
+  opacity: 0;
+  /* Hidden shots stay out of the hit test so the dots below them stay
+     clickable and the drag gesture still reaches the stage. */
+  pointer-events: none;
+}
+.pj-shot.is-shown {
+  opacity: 1;
+}
+
+.pj-shot-dots {
+  position: absolute;
+  bottom: 0.75rem;
+  left: 50%;
+  z-index: 5;
+  display: flex;
+  transform: translateX(-50%);
+  gap: 0.4rem;
+  border-radius: 9999px;
+  background: rgba(11, 15, 23, 0.55);
+  padding: 0.35rem 0.55rem;
+  backdrop-filter: blur(6px);
+}
+
+.pj-shot-dot {
+  height: 0.45rem;
+  width: 0.45rem;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.4);
+  transition: width 0.3s ease, background 0.3s ease;
+}
+.pj-shot-dot:hover {
+  background: rgba(255, 255, 255, 0.7);
+}
+.pj-shot-dot.is-active {
+  width: 1.1rem;
+  background: var(--accent);
+}
+
 /* --- Global animated backdrop --- */
 .backdrop {
   position: fixed;
