@@ -24,7 +24,9 @@ export function useSmoothScroll() {
       // A long tail: the page keeps drifting after the wheel stops, which is
       // what gives the weight.
       easing: (t) => 1 - Math.pow(1 - t, 3),
-      smoothWheel: true,
+      // The wheel belongs to useSectionSnap: easing it here only made the same
+      // scroll slower. Lenis stays on as the animator for the jumps it makes.
+      smoothWheel: false,
       syncTouch: false,
       // Handles every in-page anchor that isn't already intercepted.
       anchors: true,

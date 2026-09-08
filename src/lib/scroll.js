@@ -5,6 +5,11 @@ export function registerScroll(lenis) {
   instance = lenis;
 }
 
+/** The live Lenis instance, or null when it is not running. */
+export function getScroll() {
+  return instance;
+}
+
 /**
  * Scrolls to a section by id. Routed through Lenis when it is running so the
  * jump uses the same easing as a wheel scroll; falls back to the platform's own
