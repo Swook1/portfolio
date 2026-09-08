@@ -22,7 +22,9 @@ export default function Projects() {
   const section = useRef(null);
   const orbit = useRef(null);
   const tilt = useRef(null);
+  const rail = useRef(null);
   const cardRefs = useRef([]);
+  const firstRender = useRef(true);
 
   const project = projects[active];
 
@@ -164,11 +166,27 @@ export default function Projects() {
   }, [active]);
 
   // Keep the selected card in view in the rail, whichever way it scrolls.
+  //
+  // Deliberately not scrollIntoView: that walks up every scrollable ancestor,
+  // so on mount it dragged the whole page down to the Projects section instead
+  // of leaving the visitor at the top. This scrolls the rail and nothing else,
+  // and it skips the first render so landing on the page never moves it.
   useEffect(() => {
-    cardRefs.current[active]?.scrollIntoView({
+    if (firstRender.current) {
+      firstRender.current = false;
+      return;
+    }
+    const card = cardRefs.current[active];
+    const track = rail.current;
+    if (!card || !track) return;
+
+    const cardBox = card.getBoundingClientRect();
+    const trackBox = track.getBoundingClientRect();
+
+    track.scrollBy({
+      left: cardBox.left - trackBox.left - (trackBox.width - cardBox.width) / 2,
+      top: cardBox.top - trackBox.top - (trackBox.height - cardBox.height) / 2,
       behavior: prefersReducedMotion() ? 'auto' : 'smooth',
-      block: 'nearest',
-      inline: 'nearest',
     });
   }, [active]);
 
@@ -229,7 +247,7 @@ export default function Projects() {
 
         <div className="pj-layout">
           {/* Rail: a snap-scrolling row of cards on phones, a column on desktop. */}
-          <div className="pj-rail" role="tablist" aria-label="Projects">
+          <div ref={rail} className="pj-rail" role="tablist" aria-label="Projects">
             {projects.map((item, i) => (
               <button
                 key={item.id}
