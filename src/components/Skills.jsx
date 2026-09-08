@@ -2,18 +2,10 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { animate } from 'animejs';
 import { skills } from '../data/skills';
 import { useAnimeScope, prefersReducedMotion, splitReveal } from '../hooks/useAnimeScope';
+import { webglAvailable } from '../lib/webgl';
 
 /** Character pool for the hub's scramble-in effect. */
 const SCRAMBLE_CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ#%$&';
-
-function webglAvailable() {
-  try {
-    const canvas = document.createElement('canvas');
-    return Boolean(window.WebGLRenderingContext && canvas.getContext('webgl2'));
-  } catch {
-    return false;
-  }
-}
 
 export default function Skills() {
   const [active, setActive] = useState(0);

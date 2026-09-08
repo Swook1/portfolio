@@ -7,8 +7,12 @@ import Projects from './components/Projects';
 import Certificates from './components/Certificates';
 import Footer from './components/Footer';
 import { useScrollFx } from './hooks/useScrollFx';
+import { useSmoothScroll } from './hooks/useSmoothScroll';
+import { useSectionSnap } from './hooks/useSectionSnap';
 
 export default function App() {
+  useSmoothScroll();
+  useSectionSnap();
   useScrollFx();
 
   return (

@@ -330,6 +330,32 @@ body {
   touch-action: pan-y;
 }
 
+/* WebGL deck. It sits over the CSS track, which stays in the document as the
+   keyboard and screen-reader path — hidden while the canvas is up, and brought
+   back the moment a card in it takes focus so tabbing is never invisible. */
+.cert-canvas {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  height: 100%;
+  width: 100%;
+  opacity: 0;
+  transition: opacity 0.6s ease;
+}
+.cert-canvas.is-on {
+  opacity: 1;
+}
+.cert-track.is-behind {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+.cert-track.is-behind:focus-within {
+  z-index: 3;
+  opacity: 1;
+  pointer-events: auto;
+}
+
 .cert-slot {
   position: absolute;
   inset: 0;
@@ -402,6 +428,10 @@ body {
 }
 
 .pj-rail {
+  /* Above the stage in paint order: the rail is the section's only control
+     surface, and nothing from the stage column may end up over it. */
+  position: relative;
+  z-index: 2;
   display: flex;
   gap: 0.75rem;
   overflow-x: auto;
@@ -435,6 +465,7 @@ body {
 
 .pj-card {
   flex: 0 0 auto;
+  will-change: transform, opacity;
   width: 15rem;
   scroll-snap-align: start;
   display: flex;
@@ -445,7 +476,9 @@ body {
   background: var(--surface);
   padding: 0.6rem;
   text-align: left;
-  transition: border-color 0.25s ease, background 0.25s ease, transform 0.25s ease;
+  /* No transform here: the rail depth pass writes it every frame, and a
+     transition on it would lag a finger dragging the rail. */
+  transition: border-color 0.25s ease, background 0.25s ease, box-shadow 0.25s ease;
 }
 @media (min-width: 1024px) {
   .pj-card {
@@ -553,6 +586,10 @@ body {
   font-size: 1.15rem;
   font-weight: 700;
   color: var(--accent);
+}
+.pj-counter b {
+  font-variant-numeric: tabular-nums;
+  font-weight: inherit;
 }
 .pj-counter i {
   font-size: 0.75rem;
@@ -685,10 +722,45 @@ body {
 }
 
 .project-frame {
+  position: relative;
   transform-style: preserve-3d;
   will-change: transform;
   transition: border-color 0.3s ease, box-shadow 0.3s ease;
 }
+
+/* Lenis inertial scrolling. The library scrolls the real document, so these
+   three rules are all it needs: let the page size itself, keep the native
+   smooth-scroll from fighting the eased one, and freeze the page when a modal
+   asks Lenis to stop. */
+html.lenis,
+html.lenis body {
+  height: auto;
+}
+.lenis.lenis-smooth {
+  scroll-behavior: auto !important;
+}
+.lenis.lenis-stopped {
+  overflow: hidden;
+}
+
+/* Ambient WebGL lattice behind the Projects section. Faded in by the scene
+   itself once it has a context; the mask keeps it from ending in a hard edge
+   against the neighbouring sections. */
+.pj-field {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  height: 100%;
+  width: 100%;
+  opacity: 0;
+  pointer-events: none;
+  -webkit-mask-image: radial-gradient(120% 85% at 50% 45%, #000 35%, transparent 78%);
+  mask-image: radial-gradient(120% 85% at 50% 45%, #000 35%, transparent 78%);
+}
+.pj-field.is-live {
+  opacity: 1;
+}
+
 .project-frame:hover {
   border-color: var(--accent);
   box-shadow: 0 30px 60px -30px var(--accent);
@@ -774,6 +846,9 @@ body {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .pj-field {
+    display: none;
+  }
   .bd-dot,
   .bd-blob-c {
     display: none;
@@ -886,7 +961,7 @@ body {
   width: 100%;
 }
 .pj-card:hover {
-  transform: translateY(-3px);
+  box-shadow: 0 14px 30px -18px var(--accent);
 }
 
 /* CTA hover: a fixed 2px lift and a glow, deliberately not a magnetic pull.
@@ -978,4 +1053,278 @@ body {
   border-radius: 1.5rem;
   border: 1px solid var(--accent);
   opacity: 0.45;
+}
+
+/* Phone stand-in for the portrait.
+   The source is 1400x2489 — at full phone width that is a ~600px wall of image
+   sitting below the copy, so below lg the photo becomes a face in the heading
+   instead: it arrives before the text rather than after it, and ships as its
+   own 18KB crop instead of the 109KB portrait. */
+.about-avatar {
+  display: block;
+  width: 5.5rem;
+  height: 5.5rem;
+  margin: 0 auto 1.25rem;
+  border-radius: 9999px;
+  object-fit: cover;
+  border: 1px solid var(--border);
+  box-shadow: 0 0 0 4px var(--accent-dim);
+}
+
+/* ============================================================
+   Footer
+   ============================================================ */
+
+.foot {
+  padding-top: 5rem;
+  padding-bottom: 2rem;
+}
+/* The wordmark is later in the DOM, so the content needs a layer of its own to
+   stay on top of it. */
+.foot > .section-shell {
+  z-index: 1;
+}
+@media (min-width: 1024px) {
+  .foot {
+    padding-top: 7rem;
+  }
+}
+
+/* Top rule, drawn on entry rather than painted as a border. */
+.foot-rule {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 2px;
+  width: 100%;
+}
+.foot-rule-path {
+  stroke: var(--border);
+  stroke-width: 2;
+}
+
+/* --- Call to action --- */
+.foot-cta {
+  max-width: 44rem;
+}
+.foot-cta-title {
+  margin-top: 1.25rem;
+  @apply font-display text-3xl font-bold leading-tight sm:text-4xl lg:text-5xl;
+  color: var(--text);
+}
+.foot-cta-sub {
+  margin-top: 1.25rem;
+  max-width: 34rem;
+  font-size: 0.9375rem;
+  line-height: 1.7;
+  color: var(--text-muted);
+}
+.foot-cta-actions {
+  margin-top: 2rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+/* Copy button: both labels are stacked, so the width never jumps when the
+   text swaps and the row cannot reflow under the cursor mid-click. */
+.foot-copy {
+  position: relative;
+}
+.foot-copy-done {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  color: var(--accent-soft);
+  transition: opacity 0.2s ease;
+}
+.foot-copy-idle {
+  transition: opacity 0.2s ease;
+}
+.foot-copy[data-copied] .foot-copy-idle {
+  opacity: 0;
+}
+.foot-copy[data-copied] .foot-copy-done {
+  opacity: 1;
+}
+
+/* --- Contact cards --- */
+.foot-grid {
+  margin-top: 3.5rem;
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+@media (min-width: 900px) {
+  .foot-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+.foot-card {
+  display: flex;
+  height: 100%;
+  flex-direction: column;
+  gap: 0.5rem;
+  border-radius: 1rem;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  padding: 1.125rem;
+  transition: border-color 0.25s ease, background 0.25s ease, transform 0.25s ease;
+}
+.foot-card:hover {
+  border-color: var(--hover, var(--accent));
+  background: var(--surface-2);
+  transform: translateY(-3px);
+}
+.foot-card img {
+  height: 1.75rem;
+  width: 1.75rem;
+}
+.foot-card-name {
+  font-size: 0.9375rem;
+  font-weight: 500;
+  color: var(--text);
+}
+.foot-card-label {
+  font-size: 0.8125rem;
+  color: var(--text-dim);
+  /* Addresses and handles are long; a card must never widen its column. */
+  overflow-wrap: anywhere;
+}
+.foot-card:hover .foot-card-label {
+  color: var(--text-muted);
+}
+
+/* --- Nav + socials bar --- */
+.foot-bar {
+  margin-top: 3.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  border-top: 1px solid var(--border);
+  padding-top: 2rem;
+}
+@media (min-width: 768px) {
+  .foot-bar {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+}
+
+.foot-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.5rem;
+}
+.foot-nav a {
+  font-size: 0.875rem;
+  color: var(--text-muted);
+  transition: color 0.2s ease;
+}
+.foot-nav a:hover {
+  color: var(--accent-soft);
+}
+
+.foot-social {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.foot-social a,
+.foot-top {
+  display: flex;
+  height: 2.5rem;
+  width: 2.5rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.75rem;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-muted);
+  transition: border-color 0.25s ease, transform 0.25s ease, color 0.25s ease;
+}
+.foot-social a img {
+  height: 1.25rem;
+  width: 1.25rem;
+}
+.foot-social a:hover {
+  border-color: var(--hover, var(--accent));
+  transform: translateY(-2px);
+}
+.foot-top svg {
+  height: 1.125rem;
+  width: 1.125rem;
+}
+.foot-top:hover {
+  border-color: var(--accent);
+  color: var(--accent-soft);
+  transform: translateY(-2px);
+}
+
+/* --- Fine print --- */
+.foot-fine {
+  margin-top: 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  font-size: 0.8125rem;
+  color: var(--text-dim);
+}
+@media (min-width: 768px) {
+  .foot-fine {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+}
+.foot-credits {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+}
+.foot-credits span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+}
+.foot-credits img {
+  height: 0.875rem;
+  width: 0.875rem;
+}
+.foot-credits i {
+  height: 0.3125rem;
+  width: 0.3125rem;
+  border-radius: 9999px;
+  background: var(--accent);
+}
+
+/* Oversized wordmark bleeding off the bottom edge. Sits behind everything and
+   is clipped by the footer, so it reads as a watermark rather than a heading. */
+.foot-mark {
+  position: absolute;
+  bottom: -0.22em;
+  left: 50%;
+  z-index: 0;
+  transform: translateX(-50%);
+  font-family: 'Space Grotesk', system-ui, sans-serif;
+  font-size: clamp(5rem, 19vw, 17rem);
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.03em;
+  white-space: nowrap;
+  pointer-events: none;
+  user-select: none;
+  /* Faint outline rather than a fill: a filled word this size would compete
+     with the copy sitting over it. */
+  color: transparent;
+  -webkit-text-stroke: 1px var(--border);
+  opacity: 0.55;
+  mask-image: linear-gradient(to bottom, #000 0%, transparent 82%);
+  -webkit-mask-image: linear-gradient(to bottom, #000 0%, transparent 82%);
 }
