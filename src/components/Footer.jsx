@@ -92,8 +92,8 @@ export default function Footer() {
             Let&apos;s build <span className="text-accent">something</span>
           </h2>
           <p className="foot-cta-sub anim-hidden">
-            Open to internships, freelance work, and anything worth learning from. The fastest way
-            to reach me is email — the rest are below.
+            Open to freelance work, and anything worth learning from. The fastest way
+            to reach me is email or the rest are below.
           </p>
 
           <div className="foot-cta-actions anim-hidden">

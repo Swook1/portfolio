@@ -17,6 +17,13 @@ const details = [
 
 export default function About() {
   const root = useAnimeScope(() => [
+    animate('.about-avatar', {
+      opacity: [0, 1],
+      scale: [0.8, 1],
+      duration: 700,
+      ease: 'out(3)',
+      autoplay: false,
+    }),
     animate('.about-media', {
       opacity: [0, 1],
       x: [-40, 0],
@@ -57,8 +64,10 @@ export default function About() {
       className="section-tint relative flex min-h-screen items-center overflow-hidden py-28"
     >
       <div className="section-shell grid items-center gap-14 lg:grid-cols-[0.85fr_1.15fr] lg:gap-16">
-        {/* Photo, framed and still. */}
-        <div className="order-2 flex justify-center lg:order-1 lg:justify-start">
+        {/* Photo, framed and still. The source is a tall portrait, so at full
+            width it fills most of a phone screen on its own — below lg it is
+            replaced by the avatar in the heading instead. */}
+        <div className="order-2 hidden justify-center lg:order-1 lg:flex lg:justify-start">
           <div className="relative w-full max-w-sm">
             <div className="about-frame anim-hidden about-frame-box" aria-hidden="true" />
             <img
@@ -72,6 +81,13 @@ export default function About() {
         </div>
 
         <div className="order-1 text-center lg:order-2 lg:text-left">
+          {/* Same file as the portrait above, so it costs no extra request. */}
+          <img
+            src={portrait}
+            alt="Rayyan Zafier Leksono"
+            loading="lazy"
+            className="about-avatar anim-hidden lg:hidden"
+          />
           <span className="about-step anim-hidden eyebrow">About</span>
           <h2 className="section-title mt-5">
             A little more <span className="text-accent">about me</span>
