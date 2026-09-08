@@ -815,30 +815,6 @@ body {
   opacity: 0;
 }
 
-/* Embedded player: the poster masks YouTube's own loading chrome (title bar,
-   spinner, controls) until playback is actually under way. Once it clears,
-   hover and click reach the real player as normal. */
-.yt-embed {
-  position: relative;
-  height: 100%;
-  width: 100%;
-}
-.yt-cover {
-  position: absolute;
-  inset: 0;
-  display: block;
-  background: var(--bg);
-  transition: opacity 0.5s ease;
-}
-.yt-cover img {
-  height: 100%;
-  width: 100%;
-  object-fit: cover;
-}
-.yt-cover.is-gone {
-  opacity: 0;
-  pointer-events: none;
-}
 
 /* Stage arrows + drag affordances */
 .pj-stage {
