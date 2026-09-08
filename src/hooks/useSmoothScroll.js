@@ -20,10 +20,12 @@ export function useSmoothScroll() {
     if (prefersReducedMotion()) return undefined;
 
     const lenis = new Lenis({
-      duration: 1.15,
-      // A long tail: the page keeps drifting after the wheel stops, which is
-      // what gives the weight.
-      easing: (t) => 1 - Math.pow(1 - t, 3),
+      // Lerp, deliberately not duration+easing. Lenis prefers a duration when
+      // both are set, and a fixed duration restarts from zero on every call —
+      // which is what made repeated flicks feel like slow motion rather than
+      // momentum. A lerp chases whatever the target currently is, so re-aiming
+      // mid-flight carries the existing speed into the new move.
+      lerp: 0.1,
       // The wheel belongs to useSectionSnap: easing it here only made the same
       // scroll slower. Lenis stays on as the animator for the jumps it makes.
       smoothWheel: false,

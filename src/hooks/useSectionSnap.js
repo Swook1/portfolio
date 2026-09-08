@@ -2,8 +2,8 @@ import { useEffect } from 'react';
 import { prefersReducedMotion } from './useAnimeScope';
 import { getScroll } from '../lib/scroll';
 
-const DURATION = 1.0; // seconds per page
-const QUIET_MS = 160; // wheel silence needed before the next page is allowed
+const GESTURE = 55; // px of wheel that counts as one deliberate flick
+const QUIET_MS = 110; // wheel silence that ends a gesture
 const EDGE = 6; // px of slack when deciding a tall section is at its edge
 
 /** Every full-height block the page pages between, in document order. */
@@ -41,9 +41,7 @@ function scrollableAncestor(node, dir) {
     const scrolls = /auto|scroll|overlay/.test(style.overflowY);
     if (scrolls && el.scrollHeight > el.clientHeight + 1) {
       const room =
-        dir > 0
-          ? el.scrollTop + el.clientHeight < el.scrollHeight - 1
-          : el.scrollTop > 1;
+        dir > 0 ? el.scrollTop + el.clientHeight < el.scrollHeight - 1 : el.scrollTop > 1;
       if (room) return el;
     }
     el = el.parentElement;
@@ -52,20 +50,23 @@ function scrollableAncestor(node, dir) {
 }
 
 /**
- * One gesture, one section.
+ * One flick, one section — without ever stopping the page mid-move.
  *
- * Rather than easing the wheel — which just made the same scroll slower — each
- * wheel gesture, swipe or page key moves the document to the next section and
- * refuses further input until it has landed and the wheel has gone quiet. Lenis
- * animates the jump, so the easing is the same one the anchors use.
+ * The movement is a chase rather than a fixed animation: the section is a
+ * target and Lenis eases the document toward it every frame. Re-aiming
+ * mid-flight only moves the target, so flicking twice runs on through two
+ * sections in one continuous glide instead of stopping and restarting. Nothing
+ * is ever locked out — what is rate-limited is *starting a new gesture*, which
+ * needs the wheel to fall quiet first, so trackpad momentum cannot spend itself
+ * paging through the whole site.
  *
- * Three things opt out, because paging past content the visitor cannot see is
- * worse than not paging at all:
+ * The hook only claims the wheel when it is actually going to page; everything
+ * else it hands on to Lenis, which smooths it as usual:
  *  - a section taller than the viewport, until it is scrolled to its own edge
  *  - anything inside its own scrollable box (the projects rail)
  *  - an open modal
  *
- * Reduced motion and narrow viewports never arm it: phones have sections taller
+ * Narrow viewports and reduced motion never arm it: phones have sections taller
  * than the screen and momentum scrolling of their own.
  */
 export function useSectionSnap() {
@@ -73,14 +74,16 @@ export function useSectionSnap() {
     if (prefersReducedMotion()) return undefined;
     if (!window.matchMedia('(min-width: 1024px)').matches) return undefined;
 
-    let locked = false;
+    let travel = 0; // wheel accumulated within the current gesture
+    let armed = true; // false until the wheel goes quiet again
     let quiet = 0;
-    let watchdog = 0;
+    let aim = null; // section we are already heading for, while still moving
 
-    const releaseWhenQuiet = () => {
+    const endGesture = () => {
       clearTimeout(quiet);
       quiet = setTimeout(() => {
-        locked = false;
+        armed = true;
+        travel = 0;
       }, QUIET_MS);
     };
 
@@ -98,35 +101,32 @@ export function useSectionSnap() {
       const list = pages();
       const target = list[index];
       if (!lenis || !target) return false;
-
-      locked = true;
-      // If onComplete never arrives — a jump with nowhere to go, a tab that was
-      // hidden mid-animation — the page must not be left unscrollable.
-      clearTimeout(watchdog);
-      watchdog = setTimeout(releaseWhenQuiet, DURATION * 1000 + 400);
-
-      lenis.scrollTo(target, {
-        duration: DURATION,
-        lock: true,
-        onComplete: () => {
-          clearTimeout(watchdog);
-          releaseWhenQuiet();
-        },
-      });
+      // No duration and no lock: Lenis' configured lerp chases whatever the
+      // target currently is, so a second call while this one is still running
+      // re-aims it rather than cutting it off.
+      lenis.scrollTo(target);
       return true;
     };
 
     const step = (dir) => {
+      const lenis = getScroll();
       const list = pages();
       if (!list.length) return false;
-      const index = currentIndex(list);
-      if (roomInside(list[index], dir)) return false;
 
-      const next = index + dir;
+      // Count from where we are HEADING, not from where the page happens to be
+      // right now. Mid-flight the nearest section is still the one we are
+      // leaving, so measuring position would make a second flick re-target the
+      // same section and the gesture would appear to do nothing.
+      const from = aim !== null && lenis?.isScrolling ? aim : currentIndex(list);
+      const next = from + dir;
       if (next < 0 || next >= list.length) return false;
+
+      aim = next;
       return go(next);
     };
 
+    // Capture phase, so this runs before Lenis' own wheel handler and can take
+    // the event away from it when the gesture is a page turn.
     const onWheel = (event) => {
       if (event.ctrlKey) return; // pinch zoom
       if (modalOpen()) return;
@@ -134,31 +134,35 @@ export function useSectionSnap() {
       const dir = Math.sign(event.deltaY);
       if (!dir) return;
 
-      // Checked before the lock so a rail stays scrollable even mid-page.
-      if (scrollableAncestor(event.target, dir)) return;
-
-      if (locked) {
-        // Trackpad momentum keeps firing long after the gesture; swallow it and
-        // hold the lock open until it stops, so one flick is one page.
-        event.preventDefault();
-        releaseWhenQuiet();
+      // Both of these belong to someone else. Hand the event on and treat the
+      // gesture as spent, so reaching an edge never pages on the same flick.
+      if (scrollableAncestor(event.target, dir)) {
+        travel = 0;
+        return;
+      }
+      const list = pages();
+      if (list.length && roomInside(list[currentIndex(list)], dir)) {
+        travel = 0;
         return;
       }
 
-      const list = pages();
-      if (list.length && roomInside(list[currentIndex(list)], dir)) return;
-
+      // From here the wheel is ours: Lenis must not scroll the document too, or
+      // the page would drift out of alignment between sections.
       event.preventDefault();
+      event.stopPropagation();
+      endGesture();
+
+      if (!armed) return;
+
+      travel += event.deltaY;
+      if (Math.abs(travel) < GESTURE) return;
+
+      travel = 0;
+      armed = false;
       step(dir);
     };
 
-    const KEYS = {
-      PageDown: 1,
-      PageUp: -1,
-      ArrowDown: 1,
-      ArrowUp: -1,
-      ' ': 1,
-    };
+    const KEYS = { PageDown: 1, PageUp: -1, ArrowDown: 1, ArrowUp: -1, ' ': 1 };
 
     const onKey = (event) => {
       if (modalOpen()) return;
@@ -178,16 +182,16 @@ export function useSectionSnap() {
       const dir = KEYS[event.key] * (event.key === ' ' && event.shiftKey ? -1 : 1);
       if (!dir) return;
       if (scrollableAncestor(event.target, dir)) return;
+      if (roomInside(list[currentIndex(list)], dir)) return;
       if (step(dir)) event.preventDefault();
     };
 
-    window.addEventListener('wheel', onWheel, { passive: false });
+    window.addEventListener('wheel', onWheel, { passive: false, capture: true });
     window.addEventListener('keydown', onKey);
 
     return () => {
       clearTimeout(quiet);
-      clearTimeout(watchdog);
-      window.removeEventListener('wheel', onWheel);
+      window.removeEventListener('wheel', onWheel, { capture: true });
       window.removeEventListener('keydown', onKey);
     };
   }, []);
