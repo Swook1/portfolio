@@ -7,18 +7,19 @@ import YouTubeFacade from './ui/YouTubeFacade';
 
 const ORBIT_DURATION = 1000; // arbitrary length; scroll position seeks it
 
+const poster = (videoId) => `https://i.ytimg.com/vi/${videoId}/mqdefault.jpg`;
+
 /**
- * A showcase rather than a list: one stage plus an index of every project.
- * Page height stays the same whether there are four projects or forty — only
- * the index column grows, and it scrolls on its own.
+ * A showcase rather than a list: one stage plus a rail of every project.
+ * Page height stays the same whether there are four projects or forty — the
+ * rail scrolls instead of the page growing.
  */
 export default function Projects() {
   const [active, setActive] = useState(0);
   const section = useRef(null);
   const orbit = useRef(null);
   const tilt = useRef(null);
-  const marker = useRef(null);
-  const itemRefs = useRef([]);
+  const cardRefs = useRef([]);
 
   const project = projects[active];
 
@@ -46,9 +47,9 @@ export default function Projects() {
       autoplay: false,
     });
 
-    const index = animate('.pj-item', {
+    const cards = animate('.pj-card', {
       opacity: [0, 1],
-      x: [-24, 0],
+      y: [24, 0],
       duration: 600,
       delay: stagger(70, { start: 200 }),
       ease: 'out(3)',
@@ -63,7 +64,7 @@ export default function Projects() {
       autoplay: false,
     });
 
-    return [head, ring, index, stage];
+    return [head, ring, cards, stage];
   });
 
   // Scroll through the section -> the marker travels around the ring.
@@ -142,19 +143,13 @@ export default function Projects() {
     };
   }, [active]);
 
-  // The accent marker slides to whichever project is selected.
+  // Keep the selected card in view in the rail, whichever way it scrolls.
   useEffect(() => {
-    const el = itemRefs.current[active];
-    const bar = marker.current;
-    if (!el || !bar) return;
-    const target = { y: el.offsetTop, height: el.offsetHeight, opacity: 1 };
-    if (prefersReducedMotion()) {
-      bar.style.transform = `translateY(${target.y}px)`;
-      bar.style.height = `${target.height}px`;
-      bar.style.opacity = 1;
-      return;
-    }
-    animate(bar, { ...target, duration: 500, ease: createSpring({ stiffness: 120, damping: 18 }) });
+    cardRefs.current[active]?.scrollIntoView({
+      behavior: prefersReducedMotion() ? 'auto' : 'smooth',
+      block: 'nearest',
+      inline: 'nearest',
+    });
   }, [active]);
 
   // Media frame leans toward the pointer.
@@ -162,12 +157,10 @@ export default function Projects() {
     if (prefersReducedMotion()) return undefined;
     const el = tilt.current;
     if (!el) return undefined;
+    // Pointer tilt is a desktop affordance; on touch it just fights scrolling.
+    if (!window.matchMedia('(hover: hover)').matches) return undefined;
 
-    const leaning = createAnimatable(el, {
-      rotateX: 500,
-      rotateY: 500,
-      ease: 'out(3)',
-    });
+    const leaning = createAnimatable(el, { rotateX: 500, rotateY: 500, ease: 'out(3)' });
 
     const onMove = (e) => {
       const rect = el.getBoundingClientRect();
@@ -199,7 +192,7 @@ export default function Projects() {
   );
 
   return (
-    <section ref={setRefs} id="projects" className="section-tint relative overflow-hidden py-28">
+    <section ref={setRefs} id="projects" className="section-tint relative overflow-hidden py-20 lg:py-28">
       <div className="section-shell">
         <div className="relative">
           <svg className="orbit" viewBox="0 0 300 300" aria-hidden="true">
@@ -210,33 +203,37 @@ export default function Projects() {
           <div className="projects-head anim-hidden relative text-center">
             <span className="eyebrow">Work</span>
             <h2 className="section-title mt-5">My Projects</h2>
-            <p className="section-sub">
-              Pick one from the index — {projects.length} and counting
-            </p>
+            <p className="section-sub">Pick one — {projects.length} and counting</p>
           </div>
         </div>
 
-        <div className="mt-16 grid gap-8 lg:grid-cols-[280px_1fr] lg:gap-12">
-          {/* Index. Scrolls independently once the list gets long. */}
-          <div className="pj-index-wrap">
-            <span ref={marker} className="pj-marker" aria-hidden="true" />
-            <ul className="pj-index" role="tablist" aria-label="Projects">
-              {projects.map((item, i) => (
-                <li key={item.id}>
-                  <button
-                    type="button"
-                    role="tab"
-                    aria-selected={i === active}
-                    ref={(el) => (itemRefs.current[i] = el)}
-                    onClick={() => setActive(i)}
-                    className={`pj-item anim-hidden ${i === active ? 'is-active' : ''}`}
-                  >
-                    <span className="pj-num">{String(i + 1).padStart(2, '0')}</span>
-                    <span className="pj-name">{item.title}</span>
-                  </button>
-                </li>
-              ))}
-            </ul>
+        <div className="pj-layout">
+          {/* Rail: a snap-scrolling row of cards on phones, a column on desktop. */}
+          <div className="pj-rail" role="tablist" aria-label="Projects">
+            {projects.map((item, i) => (
+              <button
+                key={item.id}
+                type="button"
+                role="tab"
+                aria-selected={i === active}
+                ref={(el) => (cardRefs.current[i] = el)}
+                onClick={() => setActive(i)}
+                className={`pj-card anim-hidden ${i === active ? 'is-active' : ''}`}
+              >
+                <span className="pj-card-thumb">
+                  <img src={poster(item.youtubeId)} alt="" aria-hidden="true" loading="lazy" />
+                  <span className="pj-card-num">{String(i + 1).padStart(2, '0')}</span>
+                </span>
+                <span className="pj-card-body">
+                  <span className="pj-card-title">{item.title}</span>
+                  <span className="pj-card-tech">
+                    {item.technologies.map((tech) => (
+                      <img key={tech.name} src={tech.icon} alt="" aria-hidden="true" />
+                    ))}
+                  </span>
+                </span>
+              </button>
+            ))}
           </div>
 
           {/* Stage */}
@@ -251,35 +248,34 @@ export default function Projects() {
               </div>
             </div>
 
-            <div className="mt-7 space-y-5 text-center lg:text-left">
+            <div className="pj-info">
+              <span className="pj-swap pj-counter">
+                {String(active + 1).padStart(2, '0')}
+                <i>/ {String(projects.length).padStart(2, '0')}</i>
+              </span>
+
               {/* Keyed so React replaces the node outright on every switch:
                   splitText rewrites this element's children, and reverting a
                   node React still owns would restore the previous title. */}
-              <h3
-                key={project.id}
-                className="pj-title font-display text-xl font-bold sm:text-2xl lg:text-[2rem]"
-              >
+              <h3 key={project.id} className="pj-title">
                 {project.title}
               </h3>
 
-              <p className="pj-swap text-sm leading-relaxed text-muted sm:text-base">
-                {project.description}
-              </p>
+              <p className="pj-swap pj-desc">{project.description}</p>
 
               <div className="pj-swap">
-                <h4 className="text-sm font-semibold uppercase tracking-[0.18em] text-dim">
-                  Language Used
-                </h4>
-                <div className="mt-3 flex flex-wrap justify-center gap-3 lg:justify-start">
+                <h4 className="pj-label">Built with</h4>
+                <div className="pj-chips">
                   {project.technologies.map((tech) => (
-                    <span key={tech.name} title={tech.name} className="pj-chip tech-chip">
-                      <img src={tech.icon} alt={tech.name} loading="lazy" />
+                    <span key={tech.name} className="pj-chip tech-pill">
+                      <img src={tech.icon} alt="" aria-hidden="true" />
+                      {tech.name}
                     </span>
                   ))}
                 </div>
               </div>
 
-              <div className="pj-swap flex flex-col justify-center gap-3 sm:flex-row lg:justify-start">
+              <div className="pj-swap pj-actions">
                 <a
                   href={project.githubUrl}
                   target="_blank"
