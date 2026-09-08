@@ -330,6 +330,32 @@ body {
   touch-action: pan-y;
 }
 
+/* WebGL deck. It sits over the CSS track, which stays in the document as the
+   keyboard and screen-reader path — hidden while the canvas is up, and brought
+   back the moment a card in it takes focus so tabbing is never invisible. */
+.cert-canvas {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  height: 100%;
+  width: 100%;
+  opacity: 0;
+  transition: opacity 0.6s ease;
+}
+.cert-canvas.is-on {
+  opacity: 1;
+}
+.cert-track.is-behind {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+.cert-track.is-behind:focus-within {
+  z-index: 3;
+  opacity: 1;
+  pointer-events: auto;
+}
+
 .cert-slot {
   position: absolute;
   inset: 0;

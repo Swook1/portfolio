@@ -31,6 +31,14 @@ export function useSmoothScroll() {
     });
     registerScroll(lenis);
 
+    // A deep link still has to land on its section. The browser's own jump does
+    // not survive Lenis taking over the scroll position, so it is redone here,
+    // immediately and only when a hash actually names a section — an ordinary
+    // visit must open at the top.
+    const hash = window.location.hash.slice(1);
+    const target = hash ? document.getElementById(hash) : null;
+    if (target) lenis.scrollTo(target, { immediate: true });
+
     let frame = 0;
     const raf = (time) => {
       lenis.raf(time);

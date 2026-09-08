@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { animate, createDraggable, createSpring, stagger, svg, utils } from 'animejs';
 import { certificates } from '../data/certificates';
 import { useAnimeScope, prefersReducedMotion, splitReveal } from '../hooks/useAnimeScope';
+import { webglAvailable } from '../lib/webgl';
 import CertificateModal from './ui/CertificateModal';
 
 const AUTO_ROTATE_MS = 8000;
@@ -19,11 +20,15 @@ export default function Certificates() {
   const [current, setCurrent] = useState(0);
   const [selected, setSelected] = useState(null);
   const [spacing, setSpacing] = useState(320);
+  // 'pending' until we know whether the 3D deck can run at all.
+  const [mode, setMode] = useState('pending');
 
   const stage = useRef(null);
   const slideRefs = useRef([]);
   const autoplay = useRef(null);
   const advance = useRef(() => {});
+  const canvas = useRef(null);
+  const deckScene = useRef(null);
 
   const total = certificates.length;
 
@@ -40,32 +45,6 @@ export default function Certificates() {
       ease: 'linear',
       loop: true,
       onLoop: () => advance.current(),
-    });
-
-    // Drag to flick through the deck. The draggable moves an invisible proxy
-    // rather than the track itself: its release spring would otherwise settle
-    // the track at the dragged offset and leave the deck off-centre. The track
-    // follows the drag at a quarter strength for rubber-band feel, and this
-    // component stays the only writer of the track's transform.
-    createDraggable('.cert-drag-proxy', {
-      trigger: '.cert-viewport',
-      y: false,
-      x: { snap: DRAG_STEP },
-      cursor: { onHover: 'grab', onGrab: 'grabbing' },
-      onGrab: () => autoplay.current?.pause(),
-      onDrag: (self) => utils.set('.cert-track', { x: self.x * 0.25 }),
-      onRelease: (self) => {
-        const steps = Math.round(self.x / DRAG_STEP);
-        if (steps) setCurrent((i) => (((i - steps) % total) + total) % total);
-        self.stop();
-        self.setX(0);
-        animate('.cert-track', {
-          x: 0,
-          duration: 600,
-          ease: createSpring({ stiffness: 90, damping: 20 }),
-        });
-        autoplay.current?.restart();
-      },
     });
 
     const head = animate('.cert-head', {
@@ -110,6 +89,7 @@ export default function Certificates() {
 
   // Lay the deck out: centre card up front, neighbours behind and turned away.
   useEffect(() => {
+    if (mode === '3d') return;
     slideRefs.current.forEach((el, i) => {
       if (!el) return;
       const offset = ringOffset(i, current, total);
@@ -136,7 +116,94 @@ export default function Certificates() {
         ease: createSpring({ stiffness: 90, damping: 18 }),
       });
     });
-  }, [current, spacing, total]);
+  }, [current, spacing, total, mode]);
+
+  // three.js deck. Loaded only once the section is reached, and never on
+  // reduced motion or without WebGL — the CSS deck below is the fallback and
+  // stays the keyboard path either way.
+  useEffect(() => {
+    const el = stage.current;
+    if (!el) return undefined;
+
+    if (prefersReducedMotion() || !webglAvailable()) {
+      setMode('flat');
+      return undefined;
+    }
+
+    let cancelled = false;
+    const observer = new IntersectionObserver(
+      async (entries) => {
+        if (!entries.some((e) => e.isIntersecting)) return;
+        observer.disconnect();
+        try {
+          const { createDeck } = await import('./certificates/deckScene');
+          if (cancelled || !canvas.current) return;
+          const scene = await createDeck({
+            canvas: canvas.current,
+            certificates,
+            onSelect: (i) => setCurrent(i),
+            onOpen: (i) => setSelected(certificates[i]),
+          });
+          if (cancelled) {
+            scene.dispose();
+            return;
+          }
+          deckScene.current = scene;
+          setMode('3d');
+          scene.reveal();
+        } catch {
+          if (!cancelled) setMode('flat');
+        }
+      },
+      { rootMargin: '200px 0px', threshold: 0 }
+    );
+    observer.observe(el);
+
+    return () => {
+      cancelled = true;
+      observer.disconnect();
+      deckScene.current?.dispose();
+      deckScene.current = null;
+    };
+  }, []);
+
+  // The component owns the index; the scene is told where to turn to.
+  useEffect(() => {
+    deckScene.current?.setActive(current);
+  }, [current, mode]);
+
+  // Drag belongs to the scene once it is running, so the anime.js draggable
+  // only exists on the flat path. It moves an invisible proxy rather than the
+  // track itself: its release spring would otherwise settle the track at the
+  // dragged offset and leave the deck off-centre. The track follows at a
+  // quarter strength for rubber-band feel, and this component stays the only
+  // writer of that transform.
+  useEffect(() => {
+    if (mode === '3d' || prefersReducedMotion()) return undefined;
+
+    const draggable = createDraggable('.cert-drag-proxy', {
+      trigger: '.cert-viewport',
+      y: false,
+      x: { snap: DRAG_STEP },
+      cursor: { onHover: 'grab', onGrab: 'grabbing' },
+      onGrab: () => autoplay.current?.pause(),
+      onDrag: (self) => utils.set('.cert-track', { x: self.x * 0.25 }),
+      onRelease: (self) => {
+        const steps = Math.round(self.x / DRAG_STEP);
+        if (steps) setCurrent((i) => (((i - steps) % total) + total) % total);
+        self.stop();
+        self.setX(0);
+        animate('.cert-track', {
+          x: 0,
+          duration: 600,
+          ease: createSpring({ stiffness: 90, damping: 20 }),
+        });
+        autoplay.current?.restart();
+      },
+    });
+
+    return () => draggable.revert();
+  }, [mode, total]);
 
   // The modal owns the visitor's attention, so the autoplay ring stops.
   useEffect(() => {
@@ -157,7 +224,11 @@ export default function Certificates() {
         <div className="cert-head anim-hidden">
           <span className="eyebrow">Credentials</span>
           <h2 className="section-title mt-5">Certificates</h2>
-          <p className="section-sub">Drag the deck, or let it run — {total} in total</p>
+          <p className="section-sub">
+            {mode === '3d'
+              ? `Drag to turn the carousel, click the front one to open it — ${total} in total`
+              : `Drag the deck, or let it run — ${total} in total`}
+          </p>
         </div>
 
         <div
@@ -184,7 +255,18 @@ export default function Certificates() {
           <span className="cert-drag-proxy" aria-hidden="true" />
 
           <div ref={stage} className="cert-viewport">
-            <div className="cert-track">
+            {mode !== 'flat' && (
+              <canvas
+                ref={canvas}
+                className={`cert-canvas ${mode === '3d' ? 'is-on' : ''}`}
+                aria-hidden="true"
+              />
+            )}
+
+            {/* The CSS deck is the fallback, and on the 3D path it stays as the
+                keyboard- and screen-reader-accessible control behind the
+                canvas. */}
+            <div className={`cert-track ${mode === '3d' ? 'is-behind' : ''}`}>
               {certificates.map((cert, i) => (
                 <div key={cert.id} className="cert-slot">
                   <button
