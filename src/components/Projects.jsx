@@ -16,6 +16,9 @@ const poster = (videoId) => `https://i.ytimg.com/vi/${videoId}/mqdefault.jpg`;
  */
 export default function Projects() {
   const [active, setActive] = useState(0);
+  // Stays true once reached: the stage keeps playing while you flick between
+  // projects, and nothing loads before the section is seen.
+  const [inView, setInView] = useState(false);
   const section = useRef(null);
   const orbit = useRef(null);
   const tilt = useRef(null);
@@ -66,6 +69,23 @@ export default function Projects() {
 
     return [head, ring, cards, stage];
   });
+
+  // Only load and play the embed once the section is actually on screen.
+  useEffect(() => {
+    const el = section.current;
+    if (!el) return undefined;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((e) => e.isIntersecting)) {
+          setInView(true);
+          observer.disconnect();
+        }
+      },
+      { threshold: 0.25 }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
 
   // Scroll through the section -> the marker travels around the ring.
   useEffect(() => {
@@ -244,6 +264,7 @@ export default function Projects() {
                   key={project.youtubeId}
                   videoId={project.youtubeId}
                   title={project.title}
+                  autoPlay={inView}
                 />
               </div>
             </div>
