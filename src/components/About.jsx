@@ -4,8 +4,8 @@ import { useAnimeScope, splitReveal } from '../hooks/useAnimeScope';
 
 const paragraphs = [
   "I'm an Indonesian developer based in Jakarta. I believe I can reach my goal as a developer, and I'm committed to learning and to taking other people's input on board.",
-  "I'm a Computer Science student at Bina Nusantara University, taking the Software Engineering stream. Most of my work is fullstack web development, and I enjoy exploring beyond it — IoT and embedded systems, and artificial intelligence.",
-  'Beyond coding, my interests include Sports, Gym, Movies, and Comics, which help me maintain a balanced lifestyle and inspire creativity in my work.',
+  "I'm a Computer Science student at Bina Nusantara University, taking the Software Engineering stream. Most of my work is fullstack web development, and I enjoy exploring beyond it, such as IoT and embedded systems, and artificial intelligence.",
+  'Beyond coding, my interests include Sports, Gym, Movies, and Bouldering, which help me maintain a balanced lifestyle and inspire creativity in my work.',
 ];
 
 const details = [
