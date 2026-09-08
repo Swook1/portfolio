@@ -7,6 +7,14 @@ const FRAME_MS = 1000 / 30; // the backdrop never needs more than 30fps
 const STAR_COUNT = 700;
 const FIELD = { x: 26, y: 18, z: 60 };
 
+// Idle drift. Slow enough to read as a sky rather than as an animation: the
+// roll takes about twenty minutes to come round, and the cruise crosses the
+// field's depth in something over three minutes.
+const ROLL = 0.005; // radians per second about the view axis
+const CRUISE = 0.3; // world units per second, towards the camera
+const SWAY_X = 0.9;
+const SWAY_Y = 0.6;
+
 /**
  * Aurora and star field in one backdrop.
  *
@@ -112,6 +120,14 @@ export async function createNebula({ canvas }) {
   const starPositions = starGeometry.attributes.position;
   const STAR_SIZE = starMaterial.size;
 
+  // The field's own motion, independent of scroll and pointer. It is applied to
+  // the star object rather than the camera because the camera's position is
+  // owned by the anime.js animatables above, and two writers on one property
+  // means whichever runs last wins.
+  let elapsed = 0;
+  let lastNow = 0;
+  let cruise = 0;
+
   // How hard the page is being thrown, 0-1. Attack is fast and release slow, so
   // a flick blocks the aurora up immediately and it resolves over the next
   // second or so rather than snapping back the moment the wheel stops.
@@ -132,9 +148,27 @@ export async function createNebula({ canvas }) {
     starMaterial.opacity = 0.62 - velocity * 0.22;
   };
 
+  const drift = (now) => {
+    // Clamped: a backgrounded tab resumes with a huge gap, and an unclamped
+    // step would jump the sky across in one frame.
+    const delta = lastNow ? Math.min((now - lastNow) / 1000, 0.1) : 0;
+    lastNow = now;
+    elapsed += delta;
+    cruise += CRUISE * delta;
+
+    // Roll is about the view axis, so it turns x into y and never into z — the
+    // depth wrap below still compares like with like.
+    stars.rotation.z = elapsed * ROLL;
+    stars.position.z = cruise;
+    stars.position.x = Math.sin(elapsed * 0.05) * SWAY_X;
+    stars.position.y = Math.cos(elapsed * 0.037) * SWAY_Y;
+  };
+
   const recycleStars = () => {
     const array = starPositions.array;
-    const cameraZ = starCamera.position.z;
+    // Star coordinates are local to the field, so the camera has to be brought
+    // into the same space before the two can be compared.
+    const cameraZ = starCamera.position.z - stars.position.z;
     let moved = false;
 
     for (let i = 0; i < STAR_COUNT; i += 1) {
@@ -155,8 +189,10 @@ export async function createNebula({ canvas }) {
   const draw = (now) => {
     uniforms.uTime.value = now * 0.001;
     trackVelocity();
-    // No group rotation: the wrap compares star z against the camera in world
-    // space, and rotating the field would mix x into z and break that.
+    drift(now);
+    // Only ever rolled about the view axis: the wrap compares star z against
+    // the camera, and turning the field on any other axis would mix x into z
+    // and break that.
     recycleStars();
 
     renderer.autoClear = true;
