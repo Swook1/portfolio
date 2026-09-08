@@ -1,6 +1,7 @@
 import { createAnimatable, utils } from 'animejs';
 import { AURORA_FRAGMENT, AURORA_VERTEX } from './auroraScene';
 import { createStarField } from './spaceScene';
+import { wrapDepth } from './depth';
 
 const FRAME_MS = 1000 / 30; // the backdrop never needs more than 30fps
 const STAR_COUNT = 700;
@@ -107,9 +108,33 @@ export async function createNebula({ canvas }) {
   let disposed = false;
   let lastFrame = 0;
 
+  const starPositions = starGeometry.attributes.position;
+
+  const recycleStars = () => {
+    const array = starPositions.array;
+    const cameraZ = starCamera.position.z;
+    let moved = false;
+
+    for (let i = 0; i < STAR_COUNT; i += 1) {
+      const zi = i * 3 + 2;
+      const wrapped = wrapDepth(array[zi], cameraZ, FIELD.z);
+      if (wrapped !== array[zi]) {
+        array[zi] = wrapped;
+        // Re-scatter across the frame as well, so it doesn't read as the same
+        // star sliding back into place.
+        array[i * 3] = (Math.random() - 0.5) * FIELD.x * 2;
+        array[i * 3 + 1] = (Math.random() - 0.5) * FIELD.y * 2;
+        moved = true;
+      }
+    }
+    if (moved) starPositions.needsUpdate = true;
+  };
+
   const draw = (now) => {
     uniforms.uTime.value = now * 0.001;
-    stars.rotation.y = now * 0.000024;
+    // No group rotation: the wrap compares star z against the camera in world
+    // space, and rotating the field would mix x into z and break that.
+    recycleStars();
 
     renderer.autoClear = true;
     renderer.render(auroraScene, auroraCamera);

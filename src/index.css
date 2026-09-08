@@ -815,27 +815,167 @@ body {
   opacity: 0;
 }
 
-/* Embedded player: the poster masks YouTube's own loading chrome (title bar,
-   spinner, controls) until playback is actually under way. Once it clears,
-   hover and click reach the real player as normal. */
-.yt-embed {
+
+/* Stage arrows + drag affordances */
+.pj-stage {
+  /* Horizontal flicks belong to the drag; vertical stays page scrolling. */
+  touch-action: pan-y;
+}
+.pj-media {
   position: relative;
-  height: 100%;
-  width: 100%;
+  will-change: transform;
 }
-.yt-cover {
+.pj-media:hover .pj-arrow {
+  opacity: 1;
+}
+
+.pj-arrow {
   position: absolute;
-  inset: 0;
-  display: block;
-  background: var(--bg);
-  transition: opacity 0.5s ease;
+  top: 50%;
+  z-index: 5;
+  display: flex;
+  height: 2.5rem;
+  width: 2.5rem;
+  transform: translateY(-50%);
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  border: 1px solid var(--border);
+  background: rgba(11, 15, 23, 0.82);
+  backdrop-filter: blur(6px);
+  color: var(--text);
+  opacity: 0;
+  transition: opacity 0.25s ease, border-color 0.25s ease, color 0.25s ease;
 }
-.yt-cover img {
-  height: 100%;
-  width: 100%;
-  object-fit: cover;
+.pj-arrow--prev {
+  left: 0.6rem;
 }
-.yt-cover.is-gone {
+.pj-arrow--next {
+  right: 0.6rem;
+}
+.pj-arrow:hover,
+.pj-arrow:focus-visible {
+  opacity: 1;
+  border-color: var(--accent);
+  color: var(--accent-soft);
+}
+/* Touch has no hover, so the arrows stay visible there. */
+@media (hover: none) {
+  .pj-arrow {
+    opacity: 1;
+  }
+}
+
+/* Invisible gesture target for the stage drag. */
+.pj-drag-proxy {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  height: 1px;
+  width: 1px;
   opacity: 0;
   pointer-events: none;
+}
+
+/* The entrance animation owns the slot's transform, leaving the card itself
+   free for a CSS hover lift. */
+.pj-card-slot {
+  display: flex;
+}
+.pj-card-slot > .pj-card {
+  width: 100%;
+}
+.pj-card:hover {
+  transform: translateY(-3px);
+}
+
+/* CTA hover: a fixed 2px lift and a glow, deliberately not a magnetic pull.
+   Pulling the button toward the cursor moves the click target while the
+   visitor is aiming at it, and measuring the pull from the already-moved
+   position made it oscillate. */
+.pj-actions .btn {
+  transition: transform 0.2s ease, box-shadow 0.25s ease, border-color 0.25s ease,
+    background 0.25s ease, color 0.25s ease;
+}
+.pj-actions .btn:hover {
+  transform: translateY(-2px);
+}
+.pj-actions .btn-ghost:hover {
+  box-shadow: 0 12px 28px -18px var(--accent);
+}
+
+/* --- Hero portrait ---------------------------------------------------------
+   Panel, corner brackets and the base shadow that keeps the cut-out from
+   floating. These were lost when a neighbouring CSS block was replaced; the
+   ground shadow and floor line are new. */
+.portrait-panel {
+  position: absolute;
+  inset: 14% -7% 0 -7%;
+  border-radius: 2rem;
+  border: 1px solid var(--border);
+  background: linear-gradient(180deg, var(--surface) 0%, rgba(21, 28, 40, 0.35) 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+/* The floor: a lit edge across the bottom of the panel. */
+.portrait-panel::after {
+  content: '';
+  position: absolute;
+  left: 6%;
+  right: 6%;
+  bottom: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--accent) 50%, transparent);
+  opacity: 0.55;
+}
+
+.portrait-corner {
+  position: absolute;
+  height: 28px;
+  width: 28px;
+  border: 2px solid var(--accent);
+}
+.portrait-corner--tl {
+  top: -1px;
+  left: -1px;
+  border-right: 0;
+  border-bottom: 0;
+  border-top-left-radius: 2rem;
+}
+.portrait-corner--br {
+  bottom: -1px;
+  right: -1px;
+  border-left: 0;
+  border-top: 0;
+  border-bottom-right-radius: 2rem;
+}
+
+/* Contact shadow: what actually sells the figure as standing on the panel
+   rather than hovering over it. Sits above the panel, under the portrait. */
+.portrait-ground {
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  z-index: 5;
+  height: 34px;
+  width: 66%;
+  translate: -50% 40%;
+  border-radius: 9999px;
+  background: radial-gradient(ellipse at center, rgba(3, 6, 12, 0.85) 0%, rgba(3, 6, 12, 0) 72%);
+  filter: blur(7px);
+}
+
+/* Softens the hard bottom edge of the cut-out into that shadow. */
+.hero-img {
+  mask-image: linear-gradient(to bottom, #000 88%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to bottom, #000 88%, transparent 100%);
+}
+
+/* --- About photo frame (also lost in that same replacement) --- */
+.about-frame-box {
+  position: absolute;
+  inset: -1rem -1rem 1rem 1rem;
+  border-radius: 1.5rem;
+  border: 1px solid var(--accent);
+  opacity: 0.45;
 }

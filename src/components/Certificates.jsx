@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { animate, createDraggable, createSpring, stagger, svg, utils } from 'animejs';
 import { certificates } from '../data/certificates';
-import { useAnimeScope, prefersReducedMotion } from '../hooks/useAnimeScope';
+import { useAnimeScope, prefersReducedMotion, splitReveal } from '../hooks/useAnimeScope';
 import CertificateModal from './ui/CertificateModal';
 
 const AUTO_ROTATE_MS = 8000;
@@ -94,7 +94,7 @@ export default function Certificates() {
       autoplay: false,
     });
 
-    return [head, deck, caption];
+    return [head, splitReveal('.section-title', { start: 120 }), deck, caption];
   });
 
   // Side-slide distance scales with the stage width.

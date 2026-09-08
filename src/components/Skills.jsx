@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { animate } from 'animejs';
 import { skills } from '../data/skills';
-import { useAnimeScope, prefersReducedMotion } from '../hooks/useAnimeScope';
+import { useAnimeScope, prefersReducedMotion, splitReveal } from '../hooks/useAnimeScope';
 
 /** Character pool for the hub's scramble-in effect. */
 const SCRAMBLE_CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ#%$&';
@@ -41,7 +41,7 @@ export default function Skills() {
       autoplay: false,
     });
 
-    return [head, stage];
+    return [head, splitReveal('.section-title', { start: 120 }), stage];
   });
 
   // three.js is loaded only when the section is actually reached, and never on
