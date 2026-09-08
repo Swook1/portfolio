@@ -34,6 +34,7 @@ export async function createNebula({ canvas }) {
     uScroll: { value: 0 },
     uPointer: { value: new THREE.Vector2(0, 0) },
     uAspect: { value: 1 },
+    uVelocity: { value: 0 },
   };
 
   const auroraMaterial = new THREE.ShaderMaterial({
@@ -109,6 +110,27 @@ export async function createNebula({ canvas }) {
   let lastFrame = 0;
 
   const starPositions = starGeometry.attributes.position;
+  const STAR_SIZE = starMaterial.size;
+
+  // How hard the page is being thrown, 0-1. Attack is fast and release slow, so
+  // a flick blocks the aurora up immediately and it resolves over the next
+  // second or so rather than snapping back the moment the wheel stops.
+  let lastScrollY = window.scrollY;
+  let velocity = 0;
+
+  const trackVelocity = () => {
+    const y = window.scrollY;
+    // Capped below 1: a hard flick should break the field up, not bury the
+    // copy sitting on top of it.
+    const target = Math.min(Math.abs(y - lastScrollY) / 110, 0.82);
+    lastScrollY = y;
+    velocity += (target - velocity) * (target > velocity ? 0.5 : 0.06);
+    uniforms.uVelocity.value = velocity;
+    // Stars bloom with the speed, which reads as motion blur without needing a
+    // second pass to smear them.
+    starMaterial.size = STAR_SIZE * (1 + velocity * 2.4);
+    starMaterial.opacity = 0.62 - velocity * 0.22;
+  };
 
   const recycleStars = () => {
     const array = starPositions.array;
@@ -132,6 +154,7 @@ export async function createNebula({ canvas }) {
 
   const draw = (now) => {
     uniforms.uTime.value = now * 0.001;
+    trackVelocity();
     // No group rotation: the wrap compares star z against the camera in world
     // space, and rotating the field would mix x into z and break that.
     recycleStars();

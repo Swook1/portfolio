@@ -691,6 +691,21 @@ body {
   transition: border-color 0.3s ease, box-shadow 0.3s ease;
 }
 
+/* Lenis inertial scrolling. The library scrolls the real document, so these
+   three rules are all it needs: let the page size itself, keep the native
+   smooth-scroll from fighting the eased one, and freeze the page when a modal
+   asks Lenis to stop. */
+html.lenis,
+html.lenis body {
+  height: auto;
+}
+.lenis.lenis-smooth {
+  scroll-behavior: auto !important;
+}
+.lenis.lenis-stopped {
+  overflow: hidden;
+}
+
 /* WebGL slide transition, drawn over the embed only while a flip is running. */
 .pj-fx {
   position: absolute;

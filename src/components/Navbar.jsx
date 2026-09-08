@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { animate, createTimeline, stagger } from 'animejs';
 import { navLinks } from '../data/socials';
 import { useAnimeScope, prefersReducedMotion } from '../hooks/useAnimeScope';
+import { scrollToSection } from '../lib/scroll';
 
 const UNDERLINE_BASE = 100; // px — the bar is scaled from this width
 
@@ -102,7 +103,7 @@ export default function Navbar() {
   const go = (e, id) => {
     e.preventDefault();
     setMenuOpen(false);
-    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    scrollToSection(id);
   };
 
   return (

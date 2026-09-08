@@ -37,6 +37,7 @@ export const AURORA_FRAGMENT = /* glsl */ `
   uniform float uScroll;
   uniform vec2 uPointer;
   uniform float uAspect;
+  uniform float uVelocity;
 
   // Cheap value noise + 3-octave fbm. Enough for slow, large-scale colour
   // fields; nothing here needs the quality of simplex.
@@ -68,6 +69,14 @@ export const AURORA_FRAGMENT = /* glsl */ `
 
   void main() {
     vec2 uv = vUv;
+
+    // Scroll speed breaks the field into blocks, which resolve again as the
+    // page settles — the backdrop reacts to how hard you threw the wheel, not
+    // just to where you ended up.
+    float cells = mix(1200.0, 30.0, uVelocity);
+    vec2 grid = vec2(cells * uAspect, cells);
+    uv = (floor(uv * grid) + 0.5) / grid;
+
     // Squashed vertically so the noise stretches into tall streaks: that
     // anisotropy is what separates curtains from clouds.
     vec2 p = vec2(uv.x * uAspect, uv.y * 0.42) * 2.6;
@@ -77,8 +86,14 @@ export const AURORA_FRAGMENT = /* glsl */ `
 
     // Domain warp: the field folds through itself.
     vec2 q = vec2(fbm(p + t), fbm(p + vec2(3.2, 1.7) - t));
-    float f = fbm(p + q * 1.9 + vec2(0.0, uScroll * 0.9));
+    // Speed folds the field harder through itself as well as pixelating it.
+    float f = fbm(p + q * (1.9 + uVelocity * 1.7) + vec2(0.0, uScroll * 0.9));
     f = pow(smoothstep(0.15, 0.85, f), 1.4); // tighten the bands
+
+    // Posterise to match: at rest the steps are far finer than the alpha this
+    // shader ever reaches, so they only become visible at speed.
+    float steps = mix(64.0, 6.0, uVelocity);
+    f = floor(f * steps) / steps;
 
     vec3 deep  = ${glslColour(PALETTE.deep)};
     vec3 mid   = ${glslColour(PALETTE.mid)};
@@ -90,8 +105,10 @@ export const AURORA_FRAGMENT = /* glsl */ `
     colour = mix(colour, light, smoothstep(0.55, 1.0, f) * 0.85);
     colour = mix(colour, light, smoothstep(0.7, 1.0, q.x) * 0.2);
 
-    // Low on purpose: body copy sits on top of this.
-    float alpha = f * 0.4;
+    // Low on purpose: body copy sits on top of this. Speed lifts it, so the
+    // blocks the quantiser makes are actually visible while the page is moving
+    // and the field sinks back out of the way once it settles.
+    float alpha = f * 0.4 * (1.0 + uVelocity * 0.85);
 
     // Fade toward the edges so the page background carries the frame.
     float vignette = smoothstep(1.05, 0.2, length(uv - 0.5) * 1.7);
@@ -126,6 +143,7 @@ export async function createAurora({ canvas }) {
     uScroll: { value: 0 },
     uPointer: { value: new THREE.Vector2(0, 0) },
     uAspect: { value: 1 },
+    uVelocity: { value: 0 },
   };
 
   const material = new THREE.ShaderMaterial({
