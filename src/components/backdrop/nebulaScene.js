@@ -27,7 +27,7 @@ const SWAY_Y = 0.6;
  * anime.js damps every input: scroll drifts the aurora and flies the camera
  * through the field, the pointer tilts both.
  */
-export async function createNebula({ canvas }) {
+export async function createNebula({ canvas, onLost, onRestored }) {
   const THREE = await import('three');
 
   const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: false });
@@ -156,6 +156,17 @@ export async function createNebula({ canvas }) {
     elapsed += delta;
     cruise += CRUISE * delta;
 
+    // The cruise runs forever, and a star's world z is `local z + cruise`. Left
+    // unbounded the two grow into each other's float32 precision and the sky
+    // starts to shimmer after a few hours on screen. Rebasing both by one field
+    // depth leaves every world position bit-for-bit where it was.
+    if (cruise > FIELD.z) {
+      cruise -= FIELD.z;
+      const array = starPositions.array;
+      for (let i = 0; i < STAR_COUNT; i += 1) array[i * 3 + 2] += FIELD.z;
+      starPositions.needsUpdate = true;
+    }
+
     // Roll is about the view axis, so it turns x into y and never into z — the
     // depth wrap below still compares like with like.
     stars.rotation.z = elapsed * ROLL;
@@ -213,9 +224,38 @@ export async function createNebula({ canvas }) {
   draw(0);
   frame = requestAnimationFrame(render);
 
+  // A lost context wipes the drawing buffer, and the browser takes one whenever
+  // it wants: a long spell in a background tab, the GPU process recycling, a
+  // driver reset. three.js rebuilds its own state on restore, but nothing was
+  // telling the page — so the backdrop went blank and stayed blank, with the
+  // CSS tier still stepped aside for a canvas that had stopped painting.
+  const handleLost = (event) => {
+    event.preventDefault();
+    cancelAnimationFrame(frame);
+    frame = 0;
+    onLost?.();
+  };
+
+  const handleRestored = () => {
+    if (disposed) return;
+    // three.js has already rebuilt the GL context by now; this only has to put
+    // the loop and the frame clock back.
+    resize();
+    lastFrame = 0;
+    lastNow = 0;
+    draw(performance.now());
+    frame = requestAnimationFrame(render);
+    onRestored?.();
+  };
+
+  canvas.addEventListener('webglcontextlost', handleLost);
+  canvas.addEventListener('webglcontextrestored', handleRestored);
+
   const dispose = () => {
     disposed = true;
     cancelAnimationFrame(frame);
+    canvas.removeEventListener('webglcontextlost', handleLost);
+    canvas.removeEventListener('webglcontextrestored', handleRestored);
     window.removeEventListener('scroll', onScroll);
     window.removeEventListener('pointermove', onPointerMove);
     window.removeEventListener('resize', resize);
