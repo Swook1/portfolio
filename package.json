@@ -10,6 +10,7 @@
     "preview": "vite preview",
     "assets:optimize": "node scripts/optimize-assets.mjs",
     "assets:og": "node scripts/make-og.mjs",
+    "assets:favicons": "node scripts/make-favicons.mjs",
     "assets:portrait": "node scripts/make-portrait.mjs"
   },
   "dependencies": {

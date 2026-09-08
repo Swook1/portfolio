@@ -81,7 +81,13 @@ export default function Backdrop() {
       try {
         const { createNebula } = await import('./backdrop/nebulaScene');
         if (cancelled || !canvas.current) return;
-        scene.current = await createNebula({ canvas: canvas.current });
+        // While the GL context is gone the CSS tier is the backdrop again, so
+        // the page is never left with a blank canvas over a flat background.
+        scene.current = await createNebula({
+          canvas: canvas.current,
+          onLost: () => setSpaceReady(false),
+          onRestored: () => setSpaceReady(true),
+        });
         if (cancelled) {
           scene.current.dispose();
           scene.current = null;
