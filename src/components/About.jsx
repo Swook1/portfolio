@@ -8,29 +8,43 @@ const paragraphs = [
   'Beyond coding, my interests include Sports, Gym, Movies, and Comics, which help me maintain a balanced lifestyle and inspire creativity in my work.',
 ];
 
+const details = [
+  { label: 'Based in', value: 'Jakarta, Indonesia' },
+  { label: 'University', value: 'Bina Nusantara' },
+  { label: 'Major', value: 'Computer Science' },
+  { label: 'Stream', value: 'Software Engineering' },
+];
+
 export default function About() {
   const root = useAnimeScope(() => [
-    animate('.about-head', {
+    animate('.about-media', {
       opacity: [0, 1],
-      y: [30, 0],
-      duration: 700,
+      x: [-40, 0],
+      duration: 900,
       ease: 'out(3)',
       autoplay: false,
     }),
-    animate('.about-p', {
+    animate('.about-frame', {
       opacity: [0, 1],
-      y: [28, 0],
-      duration: 700,
-      delay: stagger(120),
+      scale: [0.94, 1],
+      duration: 900,
       ease: 'out(3)',
       autoplay: false,
     }),
-    animate('.about-img', {
+    animate('.about-step', {
       opacity: [0, 1],
-      scale: [1.08, 1],
-      clipPath: ['inset(0 0 100% 0)', 'inset(0 0 0% 0)'],
-      duration: 1100,
-      ease: 'out(4)',
+      y: [26, 0],
+      duration: 700,
+      delay: stagger(110, { start: 150 }),
+      ease: 'out(3)',
+      autoplay: false,
+    }),
+    animate('.about-detail', {
+      opacity: [0, 1],
+      y: [18, 0],
+      duration: 600,
+      delay: stagger(80, { start: 500 }),
+      ease: 'out(3)',
       autoplay: false,
     }),
   ]);
@@ -39,46 +53,59 @@ export default function About() {
     <section
       ref={root}
       id="about"
-      className="relative flex min-h-screen items-center overflow-hidden py-24"
+      className="relative flex min-h-screen items-center overflow-hidden py-28"
       style={{ background: 'var(--bg-alt)' }}
     >
       <div
-        className="blob left-1/4 top-1/4 h-[380px] w-[380px]"
+        className="blob left-[-8%] top-1/3 h-[360px] w-[360px]"
         style={{ background: 'var(--accent)', opacity: 0.12 }}
       />
 
-      <div className="section-shell grid items-center gap-12 lg:grid-cols-2">
-        <div className="text-center lg:text-left">
-          <div className="about-head anim-hidden">
-            <span className="eyebrow">About</span>
-            <h2 className="section-title mt-5">About Me</h2>
+      <div className="section-shell grid items-center gap-14 lg:grid-cols-[0.85fr_1.15fr] lg:gap-16">
+        {/* Photo, framed and still. */}
+        <div className="order-2 flex justify-center lg:order-1 lg:justify-start">
+          <div className="relative w-full max-w-sm">
+            <div className="about-frame anim-hidden about-frame-box" aria-hidden="true" />
+            <img
+              src={portrait}
+              alt="Rayyan Zafier Leksono outdoors"
+              loading="lazy"
+              className="about-media anim-hidden relative z-10 h-auto w-full rounded-2xl border object-cover shadow-2xl"
+              style={{ borderColor: 'var(--border)' }}
+            />
           </div>
-          <div className="mt-8 space-y-5">
-            {paragraphs.map((text, i) => (
+        </div>
+
+        <div className="order-1 text-center lg:order-2 lg:text-left">
+          <span className="about-step anim-hidden eyebrow">About</span>
+          <h2 className="about-step anim-hidden section-title mt-5">
+            A little more <span className="text-accent">about me</span>
+          </h2>
+
+          <div className="mt-7 space-y-5">
+            {paragraphs.map((text) => (
               <p
-                key={i}
-                className="about-p anim-hidden text-sm leading-relaxed text-muted sm:text-base lg:text-lg"
+                key={text.slice(0, 24)}
+                className="about-step anim-hidden text-sm leading-relaxed text-muted sm:text-base lg:text-[1.05rem]"
               >
                 {text}
               </p>
             ))}
           </div>
-        </div>
 
-        <div className="flex justify-center lg:justify-end">
-          <div className="relative">
-            <div
-              className="absolute -inset-3 rounded-3xl"
-              style={{ background: 'var(--accent-dim)', filter: 'blur(30px)' }}
-            />
-            <img
-              src={portrait}
-              alt="Rayyan Zafier Leksono outdoors"
-              loading="lazy"
-              className="about-img anim-hidden relative h-auto w-full max-w-sm rounded-2xl border object-cover shadow-2xl lg:max-w-md"
-              style={{ borderColor: 'var(--border)' }}
-            />
-          </div>
+          <dl className="mt-10 grid grid-cols-1 gap-px overflow-hidden rounded-2xl border sm:grid-cols-2"
+              style={{ borderColor: 'var(--border)', background: 'var(--border)' }}>
+            {details.map((item) => (
+              <div
+                key={item.label}
+                className="about-detail anim-hidden px-5 py-4 text-center sm:text-left"
+                style={{ background: 'var(--surface)' }}
+              >
+                <dt className="text-xs uppercase tracking-[0.18em] text-dim">{item.label}</dt>
+                <dd className="mt-1 text-sm font-medium text-ink sm:text-base">{item.value}</dd>
+              </div>
+            ))}
+          </dl>
         </div>
       </div>
     </section>
