@@ -165,52 +165,47 @@ body {
   background: var(--accent-dim);
 }
 
-/* --- Skills constellation --- */
-.constellation {
+/* --- Skills constellation (WebGL) --- */
+.const-canvas-wrap {
   position: relative;
   margin-inline: auto;
   width: 100%;
-  max-width: 56rem;
+  max-width: 60rem;
   aspect-ratio: 5 / 4;
 }
 @media (min-width: 768px) {
-  .constellation {
+  .const-canvas-wrap {
     aspect-ratio: 16 / 10;
   }
 }
 
-.const-web {
-  position: absolute;
-  inset: 0;
+.const-canvas {
   height: 100%;
   width: 100%;
+  display: block;
+  touch-action: pan-y;
+  cursor: grab;
 }
-.const-line {
-  stroke: var(--border);
-  stroke-width: 1;
-  transition: stroke 0.3s ease, stroke-width 0.3s ease;
-}
-.const-line.is-active {
-  stroke: var(--accent);
-  stroke-width: 1.6;
+.const-canvas:active {
+  cursor: grabbing;
 }
 
-/* Hub */
+/* Hub sits over the canvas centre; pointer events pass through to the scene. */
 .const-hub {
   position: absolute;
   left: 50%;
   top: 50%;
-  z-index: 2;
   display: grid;
   place-items: center;
   gap: 0.15rem;
   translate: -50% -50%;
-  height: clamp(104px, 22vw, 150px);
-  width: clamp(104px, 22vw, 150px);
+  height: clamp(104px, 20vw, 148px);
+  width: clamp(104px, 20vw, 148px);
   border-radius: 9999px;
   border: 1px solid var(--border);
-  background: rgba(11, 15, 23, 0.9);
+  background: rgba(11, 15, 23, 0.82);
   backdrop-filter: blur(6px);
+  pointer-events: none;
 }
 .const-hub-ring {
   position: absolute;
@@ -234,49 +229,56 @@ body {
   color: var(--text-dim);
 }
 
-/* Nodes */
-.const-node {
-  position: absolute;
-  z-index: 3;
-  translate: -50% -50%;
-  border: 0;
-  background: none;
-  padding: 0;
-  cursor: pointer;
-  will-change: transform;
+/* Selector under the scene: a compact strip in 3D mode, a full grid when the
+   flat fallback is showing. */
+.skill-picker,
+.skill-grid {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.5rem;
 }
-.node-tile {
-  display: grid;
-  place-items: center;
-  height: var(--tile, clamp(46px, 11vw, 76px));
-  width: var(--tile, clamp(46px, 11vw, 76px));
-  border-radius: 1.1rem;
+.skill-picker {
+  margin-top: 1.5rem;
+}
+.skill-grid {
+  margin-top: 2.5rem;
+  gap: 1rem;
+}
+
+.skill-pick {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  border-radius: 9999px;
   border: 1px solid var(--border);
   background: var(--surface);
-  transition: transform 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease,
-    background 0.3s ease;
+  padding: 0.45rem 0.9rem;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  transition: border-color 0.25s ease, color 0.25s ease, background 0.25s ease;
 }
-.const-node.is-outer .node-tile {
-  --tile: clamp(42px, 10vw, 68px);
-}
-.node-tile img {
-  height: 54%;
-  width: 54%;
+.skill-pick img {
+  height: 1.1rem;
+  width: 1.1rem;
   object-fit: contain;
 }
-.const-node:hover .node-tile,
-.const-node.is-active .node-tile {
-  transform: scale(1.12);
+.skill-pick:hover,
+.skill-pick.is-active {
   border-color: var(--accent);
   background: var(--surface-2);
-  box-shadow: 0 20px 45px -20px var(--accent);
+  color: var(--text);
 }
-.const-node:focus-visible {
-  outline: none;
+
+.skill-grid .skill-pick {
+  flex-direction: column;
+  gap: 0.65rem;
+  border-radius: 1.25rem;
+  padding: 1.25rem 1.5rem;
 }
-.const-node:focus-visible .node-tile {
-  outline: 2px solid var(--accent);
-  outline-offset: 4px;
+.skill-grid .skill-pick img {
+  height: 3rem;
+  width: 3rem;
 }
 
 .cert-arrow {

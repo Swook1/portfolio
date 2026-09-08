@@ -1,78 +1,30 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { animate, createSpring, stagger, svg } from 'animejs';
+import { animate } from 'animejs';
 import { skills } from '../data/skills';
 import { useAnimeScope, prefersReducedMotion } from '../hooks/useAnimeScope';
-
-/**
- * Two elliptical rings around a hub. Positions are percentages of the
- * constellation box, so the whole thing scales with the viewport instead of
- * needing a separate mobile layout.
- */
-const RINGS = [
-  { count: 5, rx: 21, ry: 23, offset: -90 },
-  { count: 8, rx: 39, ry: 41, offset: -67 },
-];
 
 /** Character pool for the hub's scramble-in effect. */
 const SCRAMBLE_CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ#%$&';
 
-const NODES = (() => {
-  const out = [];
-  let index = 0;
-  for (const ring of RINGS) {
-    for (let i = 0; i < ring.count && index < skills.length; i += 1, index += 1) {
-      const angle = ((ring.offset + (360 / ring.count) * i) * Math.PI) / 180;
-      out.push({
-        ...skills[index],
-        x: 50 + Math.cos(angle) * ring.rx,
-        y: 50 + Math.sin(angle) * ring.ry,
-        outer: ring.rx > 30,
-      });
-    }
+function webglAvailable() {
+  try {
+    const canvas = document.createElement('canvas');
+    return Boolean(window.WebGLRenderingContext && canvas.getContext('webgl2'));
+  } catch {
+    return false;
   }
-  return out;
-})();
+}
 
 export default function Skills() {
   const [active, setActive] = useState(0);
+  // 'pending' until we know whether the 3D scene can run at all.
+  const [mode, setMode] = useState('pending');
+
   const hubLabel = useRef(null);
+  const canvas = useRef(null);
+  const scene = useRef(null);
 
   const root = useAnimeScope(() => {
-    // Idle drift, on its own wrapper so entrance and hover transforms stay free.
-    animate('.node-float', {
-      y: [0, -8, 0],
-      duration: (el, i) => 3600 + (i % 4) * 600,
-      ease: 'inOut(2)',
-      loop: true,
-      delay: stagger(140, { from: 'center' }),
-    });
-
-    // The web draws itself outward from the hub.
-    const lines = animate(svg.createDrawable('.const-line'), {
-      draw: ['0 0', '0 1'],
-      duration: 900,
-      delay: stagger(70),
-      ease: 'out(3)',
-      autoplay: false,
-    });
-
-    const hub = animate('.const-hub', {
-      opacity: [0, 1],
-      scale: [0.6, 1],
-      duration: 900,
-      ease: createSpring({ stiffness: 90, damping: 14 }),
-      autoplay: false,
-    });
-
-    const nodes = animate('.const-node', {
-      opacity: [0, 1],
-      scale: [0.2, 1],
-      duration: 1100,
-      delay: stagger(70, { from: 'center', start: 250 }),
-      ease: createSpring({ stiffness: 110, damping: 13 }),
-      autoplay: false,
-    });
-
     const head = animate('.skills-head', {
       opacity: [0, 1],
       y: [30, 0],
@@ -81,16 +33,72 @@ export default function Skills() {
       autoplay: false,
     });
 
-    return [head, hub, lines, nodes];
+    const stage = animate('.const-stage', {
+      opacity: [0, 1],
+      scale: [0.94, 1],
+      duration: 900,
+      ease: 'out(3)',
+      autoplay: false,
+    });
+
+    return [head, stage];
   });
 
-  // Hub label scrambles into the selected skill's name: anime.js drives a
-  // plain progress value and each frame rewrites the not-yet-revealed tail
-  // with random characters.
+  // three.js is loaded only when the section is actually reached, and never on
+  // reduced motion or without WebGL — the flat grid covers those cases.
+  useEffect(() => {
+    const el = root.current;
+    if (!el) return undefined;
+
+    if (prefersReducedMotion() || !webglAvailable()) {
+      setMode('flat');
+      return undefined;
+    }
+
+    let cancelled = false;
+    const observer = new IntersectionObserver(
+      async (entries) => {
+        if (!entries.some((e) => e.isIntersecting)) return;
+        observer.disconnect();
+        try {
+          const { createConstellation } = await import('./skills/constellationScene');
+          if (cancelled || !canvas.current) return;
+          scene.current = await createConstellation({
+            canvas: canvas.current,
+            skills,
+            onSelect: setActive,
+          });
+          if (cancelled) {
+            scene.current.dispose();
+            scene.current = null;
+            return;
+          }
+          setMode('3d');
+          scene.current.reveal();
+        } catch {
+          // WebGL can still fail at context creation; fall back rather than
+          // leaving an empty box.
+          if (!cancelled) setMode('flat');
+        }
+      },
+      { rootMargin: '200px 0px', threshold: 0 }
+    );
+    observer.observe(el);
+
+    return () => {
+      cancelled = true;
+      observer.disconnect();
+      scene.current?.dispose();
+      scene.current = null;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Hub label scrambles into the selected skill's name.
   useEffect(() => {
     const el = hubLabel.current;
     if (!el) return undefined;
-    const name = NODES[active].name;
+    const name = skills[active].name;
 
     if (prefersReducedMotion()) {
       el.textContent = name;
@@ -118,7 +126,11 @@ export default function Skills() {
     return () => anim.pause();
   }, [active]);
 
-  const select = useCallback((i) => setActive(i), []);
+  // Keyboard and screen-reader selection drives the 3D scene too.
+  const select = useCallback((i) => {
+    setActive(i);
+    scene.current?.setActive(i);
+  }, []);
 
   return (
     <section ref={root} id="skills" className="relative flex min-h-screen items-center py-28">
@@ -129,59 +141,45 @@ export default function Skills() {
             Tools I <span className="text-accent">build with</span>
           </h2>
           <p className="section-sub">
-            Hover or tap a node — each one wires back into the same stack
+            {mode === '3d'
+              ? 'Drag to spin the cluster — hover a tile to read it'
+              : 'Programming languages and softwares I work with'}
           </p>
         </div>
 
-        <div className="constellation mt-12">
-          <svg
-            className="const-web"
-            viewBox="0 0 100 100"
-            preserveAspectRatio="none"
-            aria-hidden="true"
-          >
-            {NODES.map((node, i) => (
-              <line
-                key={node.name}
-                className={`const-line ${i === active ? 'is-active' : ''}`}
-                x1="50"
-                y1="50"
-                x2={node.x}
-                y2={node.y}
-                vectorEffect="non-scaling-stroke"
-              />
-            ))}
-          </svg>
+        <div className="const-stage anim-hidden mt-10">
+          {mode !== 'flat' && (
+            <div className="const-canvas-wrap">
+              <canvas ref={canvas} className="const-canvas" />
 
-          <div className="const-hub anim-hidden">
-            <span className="const-hub-ring" aria-hidden="true" />
-            <span ref={hubLabel} className="const-hub-name" aria-live="polite">
-              {NODES[0].name}
-            </span>
-            <span className="const-hub-meta">{skills.length} tools</span>
-          </div>
-
-          {NODES.map((node, i) => (
-            <button
-              key={node.name}
-              type="button"
-              className={`const-node anim-hidden ${node.outer ? 'is-outer' : ''} ${
-                i === active ? 'is-active' : ''
-              }`}
-              style={{ left: `${node.x}%`, top: `${node.y}%` }}
-              onMouseEnter={() => select(i)}
-              onFocus={() => select(i)}
-              onClick={() => select(i)}
-              aria-label={node.name}
-              aria-pressed={i === active}
-            >
-              <span className="node-float">
-                <span className="node-tile">
-                  <img src={node.icon} alt="" aria-hidden="true" loading="lazy" />
+              <div className="const-hub" aria-hidden="true">
+                <span className="const-hub-ring" />
+                <span ref={hubLabel} className="const-hub-name">
+                  {skills[0].name}
                 </span>
-              </span>
-            </button>
-          ))}
+                <span className="const-hub-meta">{skills.length} tools</span>
+              </div>
+            </div>
+          )}
+
+          {/* Always rendered: the flat grid is the fallback, and on the 3D path
+              it stays as the keyboard- and screen-reader-accessible control. */}
+          <ul className={mode === '3d' ? 'skill-picker' : 'skill-grid'}>
+            {skills.map((skill, i) => (
+              <li key={skill.name}>
+                <button
+                  type="button"
+                  onClick={() => select(i)}
+                  onFocus={() => select(i)}
+                  aria-pressed={i === active}
+                  className={`skill-pick ${i === active ? 'is-active' : ''}`}
+                >
+                  <img src={skill.icon} alt="" aria-hidden="true" loading="lazy" />
+                  <span>{skill.name}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
         </div>
       </div>
     </section>
