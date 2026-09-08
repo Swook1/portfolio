@@ -249,8 +249,16 @@ export default function Projects() {
     const el = section.current;
     if (!el) return undefined;
 
-    const sync = () => lattice.current?.setActive(onScreen.current && !document.hidden);
-    const observer = new IntersectionObserver(sync, { threshold: 0 });
+    // This observer keeps its own visibility flag rather than reading the one
+    // the section-level observer writes: that one only flips at 25%, so a
+    // sync fired at the 0% boundary would read a stale `false` and leave the
+    // lattice stopped for good once the section came back on screen.
+    let visible = false;
+    const sync = () => lattice.current?.setActive(visible && !document.hidden);
+    const observer = new IntersectionObserver((entries) => {
+      visible = entries.some((e) => e.isIntersecting);
+      sync();
+    }, { threshold: 0 });
     observer.observe(el);
     document.addEventListener('visibilitychange', sync);
 

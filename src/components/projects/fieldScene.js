@@ -158,17 +158,37 @@ export async function createField({ canvas }) {
   window.addEventListener('resize', resize);
   resize();
 
+  let presence = null;
+
+  // The ripple fades in and out rather than snapping. A cross-origin iframe
+  // swallows pointer events, so hovering the video reads as the pointer having
+  // left the section: without the fade the ripple would blink off and back on
+  // every time the pointer crossed the player's edge.
+  const setPresence = (to) => {
+    if (uniforms.uPointerOn.value === to) return;
+    presence?.pause();
+    presence = animate(uniforms.uPointerOn, {
+      value: to,
+      duration: to ? 260 : 520,
+      ease: 'out(2)',
+    });
+  };
+
   /** Pointer in 0..1 section coordinates, or null when it has left. */
   const setPointer = (nx, ny) => {
     if (nx === null) {
-      uniforms.uPointerOn.value = 0;
+      setPresence(0);
       return;
     }
-    uniforms.uPointerOn.value = 1;
+    // The position keeps updating while the ripple is fading out, so a pointer
+    // that comes back somewhere else does not drag the wave across the field.
     uniforms.uPointer.value.set((nx - 0.5) * viewW, (0.5 - ny) * viewH);
+    setPresence(1);
   };
 
   let disposed = false;
+  let contextLost = false;
+  let wanted = false;
   let frame = 0;
   let running = false;
   let last = 0;
@@ -197,7 +217,31 @@ export async function createField({ canvas }) {
   };
 
   /** Play/pause with the section's visibility. */
-  const setActive = (active) => (active ? start() : stop());
+  const setActive = (active) => {
+    wanted = active;
+    if (active && !contextLost) start();
+    else stop();
+  };
+
+  // The browser can take the GL context back at any time — a long spell in a
+  // background tab, the GPU process recycling. three.js rebuilds its own state
+  // on restore; this puts the loop back, and keeps it stopped in between so it
+  // is not spinning against a dead context.
+  const handleLost = (event) => {
+    event.preventDefault();
+    contextLost = true;
+    stop();
+  };
+
+  const handleRestored = () => {
+    if (disposed) return;
+    contextLost = false;
+    resize();
+    if (wanted) start();
+  };
+
+  canvas.addEventListener('webglcontextlost', handleLost);
+  canvas.addEventListener('webglcontextrestored', handleRestored);
 
   /** Ring outward from the side the incoming project came from. */
   const pulse = (dir = 1) => {
@@ -218,10 +262,14 @@ export async function createField({ canvas }) {
   const dispose = () => {
     disposed = true;
     stop();
+    canvas.removeEventListener('webglcontextlost', handleLost);
+    canvas.removeEventListener('webglcontextrestored', handleRestored);
     burst?.pause();
+    presence?.pause();
     window.removeEventListener('resize', resize);
     utils.remove(uniforms.uBurst);
     utils.remove(uniforms.uOpacity);
+    utils.remove(uniforms.uPointerOn);
     points.geometry.dispose();
     material.dispose();
     renderer.dispose();
