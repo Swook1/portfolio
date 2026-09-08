@@ -29,9 +29,13 @@ function webglAvailable() {
  *
  * Two tiers. The CSS tier — drifting blobs, a faded grid, a twinkling dot
  * field — renders immediately and is the whole backdrop on mobile, on reduced
- * motion, and without WebGL. On desktop a three.js star field takes over after
- * first paint, and the CSS blobs and dots step aside so the two don't stack.
- * three.js is never in the initial bundle.
+ * motion, and without WebGL. On desktop a three.js aurora fades in over it
+ * after first paint, and the CSS blobs and dots step aside so the two don't
+ * stack. three.js is never in the initial bundle.
+ *
+ * The aurora is the same visual idea as the blobs it replaces, so the two
+ * tiers read as one design. `backdrop/spaceScene.js` holds an alternative
+ * star-field scene with the same interface.
  */
 export default function Backdrop() {
   const [spaceReady, setSpaceReady] = useState(false);
@@ -83,9 +87,9 @@ export default function Backdrop() {
     // After first paint: the backdrop must never delay the hero.
     const start = async () => {
       try {
-        const { createSpace } = await import('./backdrop/spaceScene');
+        const { createAurora } = await import('./backdrop/auroraScene');
         if (cancelled || !canvas.current) return;
-        scene.current = await createSpace({ canvas: canvas.current });
+        scene.current = await createAurora({ canvas: canvas.current });
         if (cancelled) {
           scene.current.dispose();
           scene.current = null;
