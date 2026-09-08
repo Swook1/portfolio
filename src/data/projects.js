@@ -1,6 +1,37 @@
-import { HTML, CSS, JavaScript, Java, MySQL, MongoDB, ReactLogo, TailwindLogo } from './skills';
+import {
+  HTML,
+  CSS,
+  JavaScript,
+  Java,
+  MySQL,
+  MongoDB,
+  NextLogo,
+  ReactLogo,
+  TailwindLogo,
+} from './skills';
+import privamedHero from '../assets/project/privamed-hero.webp';
+import privamedHeroThumb from '../assets/project/privamed-hero-thumb.webp';
+import privamedTreatments from '../assets/project/privamed-admin-treatments.webp';
+import privamedOverview from '../assets/project/privamed-admin-overview.webp';
 
 export const projects = [
+  {
+    id: 5,
+    title: 'PrivaMed Aesthetic Center',
+    description:
+      'A client website for PrivaMed, a medical aesthetic clinic in Jatiasih, Bekasi. Treatments, prices and WhatsApp booking on the landing page, plus an admin dashboard where the clinic edits its own content without a redeploy.',
+    images: [
+      { src: privamedHero, thumb: privamedHeroThumb, alt: 'Landing page' },
+      { src: privamedTreatments, alt: 'Admin dashboard — treatments and promos' },
+      { src: privamedOverview, alt: 'Admin dashboard — content and analytics' },
+    ],
+    technologies: [
+      { name: 'Next.js', icon: NextLogo },
+      { name: 'React', icon: ReactLogo },
+      { name: 'Tailwind CSS', icon: TailwindLogo },
+    ],
+    websiteUrl: 'https://privamed.id',
+  },
   {
     id: 1,
     title: 'B-Connect Platform',

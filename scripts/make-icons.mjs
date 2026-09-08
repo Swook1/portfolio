@@ -6,12 +6,19 @@ import * as si from 'simple-icons';
  * wordmarks (MongoDB, MySQL) read at the same size as every other tile.
  */
 // `crop` is a viewBox into the 24x24 glyph, used when a brand mark ships with
-// a wordmark attached (MySQL) and only the symbol should survive.
+// a wordmark attached (MySQL) and only the symbol should survive. `lift`
+// overrides how far the brand colour is raised: the default suits mid-tone
+// logos, while a brand whose colour is black needs far more to read at all on
+// a dark tile.
 const ICONS = [
   ['siPython', 'python'],
+  ['siFastapi', 'fastapi'],
   ['siPostgresql', 'postgresql'],
   ['siMongodb', 'mongodb'],
   ['siMysql', 'mysql', { crop: { x: 13.3, y: 3.1, w: 10.7, h: 9.1 } }],
+  ['siNextdotjs', 'nextjs', { lift: 0.88 }],
+  ['siThreedotjs', 'threejs', { lift: 0.88 }],
+  ['siAnimedotjs', 'animejs', { lift: 0.88 }],
 ];
 
 /** Lifts a brand colour so mid-tone logos still read on the dark tiles. */
@@ -45,7 +52,7 @@ for (const [key, name, options = {}] of ICONS) {
     </clipPath>
     <g clip-path="url(#c)">
       <g transform="translate(${offsetX} ${offsetY}) scale(${scale}) translate(${-box.x} ${-box.y})">
-        <path d="${icon.path}" fill="${lighten(icon.hex, 0.3)}"/>
+        <path d="${icon.path}" fill="${lighten(icon.hex, options.lift ?? 0.3)}"/>
       </g>
     </g>
   </svg>`;
