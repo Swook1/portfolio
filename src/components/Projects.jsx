@@ -16,7 +16,6 @@ import YouTubeFacade from './ui/YouTubeFacade';
 
 const ORBIT_DURATION = 1000; // arbitrary length; scroll position seeks it
 const DRAG_STEP = 120; // px of drag that counts as one project
-const MAGNET_RADIUS = 90; // px from a button before it starts leaning over
 
 const poster = (videoId) => `https://i.ytimg.com/vi/${videoId}/mqdefault.jpg`;
 
@@ -36,7 +35,6 @@ export default function Projects() {
   const tilt = useRef(null);
   const rail = useRef(null);
   const stage = useRef(null);
-  const actions = useRef(null);
   const cardRefs = useRef([]);
   const firstRender = useRef(true);
   const onScreen = useRef(false);
@@ -331,38 +329,6 @@ export default function Projects() {
     };
   }, []);
 
-  // Magnetic call-to-action buttons: each leans toward the cursor once it is
-  // close, then springs home.
-  useEffect(() => {
-    if (prefersReducedMotion()) return undefined;
-    if (!window.matchMedia('(hover: hover)').matches) return undefined;
-    const host = actions.current;
-    if (!host) return undefined;
-
-    const magnets = Array.from(host.querySelectorAll('.btn')).map((el) => ({
-      el,
-      pull: createAnimatable(el, { x: 350, y: 350, ease: 'out(3)' }),
-    }));
-
-    const onMove = (event) => {
-      magnets.forEach(({ el, pull }) => {
-        const rect = el.getBoundingClientRect();
-        const dx = event.clientX - (rect.left + rect.width / 2);
-        const dy = event.clientY - (rect.top + rect.height / 2);
-        const distance = Math.hypot(dx, dy);
-        const strength = utils.clamp(1 - distance / (MAGNET_RADIUS + rect.width / 2), 0, 1);
-        pull.x(dx * 0.32 * strength);
-        pull.y(dy * 0.32 * strength);
-      });
-    };
-
-    window.addEventListener('pointermove', onMove, { passive: true });
-    return () => {
-      window.removeEventListener('pointermove', onMove);
-      magnets.forEach(({ pull }) => pull.revert());
-    };
-  }, [active]);
-
   const setRefs = useCallback(
     (el) => {
       section.current = el;
@@ -496,7 +462,7 @@ export default function Projects() {
                 </div>
               </div>
 
-              <div ref={actions} className="pj-swap pj-actions">
+              <div className="pj-swap pj-actions">
                 <a
                   href={project.githubUrl}
                   target="_blank"

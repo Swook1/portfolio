@@ -888,3 +888,18 @@ body {
 .pj-card:hover {
   transform: translateY(-3px);
 }
+
+/* CTA hover: a fixed 2px lift and a glow, deliberately not a magnetic pull.
+   Pulling the button toward the cursor moves the click target while the
+   visitor is aiming at it, and measuring the pull from the already-moved
+   position made it oscillate. */
+.pj-actions .btn {
+  transition: transform 0.2s ease, box-shadow 0.25s ease, border-color 0.25s ease,
+    background 0.25s ease, color 0.25s ease;
+}
+.pj-actions .btn:hover {
+  transform: translateY(-2px);
+}
+.pj-actions .btn-ghost:hover {
+  box-shadow: 0 12px 28px -18px var(--accent);
+}
