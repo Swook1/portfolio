@@ -1,37 +1,76 @@
-import { animate, stagger } from 'animejs';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { animate, createSpring, stagger, svg } from 'animejs';
 import { skills } from '../data/skills';
-import { useAnimeScope } from '../hooks/useAnimeScope';
+import { useAnimeScope, prefersReducedMotion } from '../hooks/useAnimeScope';
 
 /**
- * Hand-tuned scatter: `size` picks the tile scale, `shift` nudges the node up
- * or down. The shift is a margin (not a transform) so anime.js keeps sole
- * ownership of every transform on these nodes.
+ * Two elliptical rings around a hub. Positions are percentages of the
+ * constellation box, so the whole thing scales with the viewport instead of
+ * needing a separate mobile layout.
  */
-const LAYOUT = [
-  { size: 'md', shift: 26 },
-  { size: 'lg', shift: -18 },
-  { size: 'sm', shift: 34 },
-  { size: 'lg', shift: 4 },
-  { size: 'md', shift: -30 },
-  { size: 'sm', shift: 18 },
-  { size: 'lg', shift: -8 },
-  { size: 'sm', shift: 30 },
-  { size: 'md', shift: -24 },
-  { size: 'md', shift: 12 },
-  { size: 'sm', shift: -14 },
-  { size: 'lg', shift: 22 },
+const RINGS = [
+  { count: 5, rx: 21, ry: 23, offset: -90 },
+  { count: 8, rx: 39, ry: 41, offset: -67 },
 ];
 
+/** Character pool for the hub's scramble-in effect. */
+const SCRAMBLE_CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ#%$&';
+
+const NODES = (() => {
+  const out = [];
+  let index = 0;
+  for (const ring of RINGS) {
+    for (let i = 0; i < ring.count && index < skills.length; i += 1, index += 1) {
+      const angle = ((ring.offset + (360 / ring.count) * i) * Math.PI) / 180;
+      out.push({
+        ...skills[index],
+        x: 50 + Math.cos(angle) * ring.rx,
+        y: 50 + Math.sin(angle) * ring.ry,
+        outer: ring.rx > 30,
+      });
+    }
+  }
+  return out;
+})();
+
 export default function Skills() {
+  const [active, setActive] = useState(0);
+  const hubLabel = useRef(null);
+
   const root = useAnimeScope(() => {
-    // Idle drift, one wrapper per node so hover and entrance transforms stay
-    // on their own elements. Varied durations keep the cloud from pulsing.
-    animate('.skill-float', {
-      y: [0, -10, 0],
-      duration: (el, i) => 3200 + (i % 5) * 500,
+    // Idle drift, on its own wrapper so entrance and hover transforms stay free.
+    animate('.node-float', {
+      y: [0, -8, 0],
+      duration: (el, i) => 3600 + (i % 4) * 600,
       ease: 'inOut(2)',
       loop: true,
-      delay: stagger(180),
+      delay: stagger(140, { from: 'center' }),
+    });
+
+    // The web draws itself outward from the hub.
+    const lines = animate(svg.createDrawable('.const-line'), {
+      draw: ['0 0', '0 1'],
+      duration: 900,
+      delay: stagger(70),
+      ease: 'out(3)',
+      autoplay: false,
+    });
+
+    const hub = animate('.const-hub', {
+      opacity: [0, 1],
+      scale: [0.6, 1],
+      duration: 900,
+      ease: createSpring({ stiffness: 90, damping: 14 }),
+      autoplay: false,
+    });
+
+    const nodes = animate('.const-node', {
+      opacity: [0, 1],
+      scale: [0.2, 1],
+      duration: 1100,
+      delay: stagger(70, { from: 'center', start: 250 }),
+      ease: createSpring({ stiffness: 110, damping: 13 }),
+      autoplay: false,
     });
 
     const head = animate('.skills-head', {
@@ -42,58 +81,107 @@ export default function Skills() {
       autoplay: false,
     });
 
-    // Nodes scatter outward from the middle of the cloud.
-    const nodes = animate('.skill-node', {
-      opacity: [0, 1],
-      scale: [0.4, 1],
-      y: (el, i) => [i % 2 === 0 ? 50 : -50, 0],
-      rotate: (el, i) => [i % 3 === 0 ? -12 : 10, 0],
-      duration: 900,
-      ease: 'out(4)',
-      delay: stagger(60, { from: 'center' }),
-      autoplay: false,
-    });
-
-    return [head, nodes];
+    return [head, hub, lines, nodes];
   });
 
+  // Hub label scrambles into the selected skill's name: anime.js drives a
+  // plain progress value and each frame rewrites the not-yet-revealed tail
+  // with random characters.
+  useEffect(() => {
+    const el = hubLabel.current;
+    if (!el) return undefined;
+    const name = NODES[active].name;
+
+    if (prefersReducedMotion()) {
+      el.textContent = name;
+      return undefined;
+    }
+
+    const state = { progress: 0 };
+    const anim = animate(state, {
+      progress: [0, 1],
+      duration: 520,
+      ease: 'out(2)',
+      onUpdate: () => {
+        const revealed = Math.round(state.progress * name.length);
+        let out = name.slice(0, revealed);
+        for (let i = revealed; i < name.length; i += 1) {
+          out += name[i] === ' ' ? ' ' : SCRAMBLE_CHARS[(Math.random() * SCRAMBLE_CHARS.length) | 0];
+        }
+        el.textContent = out;
+      },
+      onComplete: () => {
+        el.textContent = name;
+      },
+    });
+
+    return () => anim.pause();
+  }, [active]);
+
+  const select = useCallback((i) => setActive(i), []);
+
   return (
-    <section ref={root} id="skills" className="relative flex min-h-screen items-center overflow-hidden py-28">
-      <div className="section-shell relative text-center">
+    <section ref={root} id="skills" className="relative flex min-h-screen items-center py-28">
+      <div className="section-shell text-center">
         <div className="skills-head anim-hidden">
           <span className="eyebrow">Stack</span>
           <h2 className="section-title mt-5">
             Tools I <span className="text-accent">build with</span>
           </h2>
-          <p className="section-sub">Programming languages and softwares I work with</p>
+          <p className="section-sub">
+            Hover or tap a node — each one wires back into the same stack
+          </p>
         </div>
 
-        <div className="relative mt-16">
-          <div className="skill-rings" data-parallax="0.04" aria-hidden="true">
-            <span />
-            <span />
-            <span />
+        <div className="constellation mt-12">
+          <svg
+            className="const-web"
+            viewBox="0 0 100 100"
+            preserveAspectRatio="none"
+            aria-hidden="true"
+          >
+            {NODES.map((node, i) => (
+              <line
+                key={node.name}
+                className={`const-line ${i === active ? 'is-active' : ''}`}
+                x1="50"
+                y1="50"
+                x2={node.x}
+                y2={node.y}
+                vectorEffect="non-scaling-stroke"
+              />
+            ))}
+          </svg>
+
+          <div className="const-hub anim-hidden">
+            <span className="const-hub-ring" aria-hidden="true" />
+            <span ref={hubLabel} className="const-hub-name" aria-live="polite">
+              {NODES[0].name}
+            </span>
+            <span className="const-hub-meta">{skills.length} tools</span>
           </div>
 
-          <ul className="skill-cloud">
-            {skills.map((skill, i) => {
-              const { size, shift } = LAYOUT[i % LAYOUT.length];
-              return (
-                <li
-                  key={skill.name}
-                  className={`skill-node anim-hidden skill-node--${size}`}
-                  style={{ marginTop: `${shift}px` }}
-                >
-                  <div className="skill-float">
-                    <div className="skill-tile">
-                      <img src={skill.icon} alt="" aria-hidden="true" loading="lazy" />
-                    </div>
-                  </div>
-                  <span className="skill-label">{skill.name}</span>
-                </li>
-              );
-            })}
-          </ul>
+          {NODES.map((node, i) => (
+            <button
+              key={node.name}
+              type="button"
+              className={`const-node anim-hidden ${node.outer ? 'is-outer' : ''} ${
+                i === active ? 'is-active' : ''
+              }`}
+              style={{ left: `${node.x}%`, top: `${node.y}%` }}
+              onMouseEnter={() => select(i)}
+              onFocus={() => select(i)}
+              onClick={() => select(i)}
+              aria-label={node.name}
+              aria-pressed={i === active}
+            >
+              <span className="node-float">
+                <span className="node-tile">
+                  <img src={node.icon} alt="" aria-hidden="true" loading="lazy" />
+                </span>
+              </span>
+            </button>
+          ))}
         </div>
       </div>
     </section>
