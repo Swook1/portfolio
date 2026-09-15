@@ -1718,11 +1718,6 @@ html.lenis body {
   border-bottom-left-radius: 1rem;
   border-bottom-right-radius: 0.3rem;
 }
-.chat-bubble.is-failed {
-  border-color: #b91c1c;
-  color: var(--text-muted);
-}
-
 .chat-time {
   padding: 0 0.25rem;
   font-size: 0.625rem;

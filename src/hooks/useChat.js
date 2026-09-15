@@ -50,13 +50,12 @@ export function useChat() {
         setMessages((prev) => [...prev, makeMessage('assistant', reply)]);
       } catch (err) {
         if (err.name === 'AbortError') return;
-        setError('Could not send that. Try again.');
-        setMessages((prev) => [
-          ...prev,
-          makeMessage('assistant', 'Something went wrong on my end. Mind trying again?', {
-            failed: true,
-          }),
-        ]);
+        // A failure is reported as a failure, never as a bot bubble: a canned
+        // apology in the assistant's voice reads like an answer, and the visitor
+        // cannot tell a real reply from a dead backend. The route's own sentence
+        // is more useful than a generic one when it has a reason (out of credit,
+        // rate limited, model down); fall back when it does not.
+        setError(err.message || 'Could not send that. Try again.');
       } finally {
         if (inFlight.current === controller) inFlight.current = null;
         setPending(false);

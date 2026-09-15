@@ -5,8 +5,19 @@ import reactRefresh from 'eslint-plugin-react-refresh'
 
 export default [
   { ignores: ['dist'] },
+  // The serverless routes run in Node, not the browser: process, Buffer and
+  // friends are globals there, and there is no JSX.
+  {
+    files: ['api/**/*.js'],
+    languageOptions: {
+      globals: globals.node,
+      parserOptions: { ecmaVersion: 'latest', sourceType: 'module' },
+    },
+    rules: js.configs.recommended.rules,
+  },
   {
     files: ['**/*.{js,jsx}'],
+    ignores: ['api/**'],
     languageOptions: {
       ecmaVersion: 2020,
       globals: globals.browser,

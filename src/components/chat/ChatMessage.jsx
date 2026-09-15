@@ -12,7 +12,7 @@ export default function ChatMessage({ message }) {
       {!mine && <BotAvatar className="chat-row-avatar" />}
 
       <div className="chat-row-body">
-        <div className={`chat-bubble ${mine ? 'is-mine' : ''} ${message.failed ? 'is-failed' : ''}`}>
+        <div className={`chat-bubble ${mine ? 'is-mine' : ''}`}>
           {message.text}
         </div>
         <time className="chat-time" dateTime={new Date(message.at).toISOString()}>
