@@ -10,35 +10,19 @@
 
 import { SYSTEM_PROMPT } from './_knowledge.js';
 import { completeWithRetry, UpstreamError } from './_inferhub.js';
+import { checkRateLimit } from './_ratelimit.js';
 
-/** Caps. Generous for a real visitor, tight enough to bound a bad one. */
-const MAX_MESSAGES = 20; // turns kept from the transcript, most recent first
-const MAX_CHARS = 1500; // per message
-const MAX_BODY_CHARS = 20000; // whole transcript
-
-/** Best-effort throttle: requests per IP per window. */
-const RATE_LIMIT = 20;
-const RATE_WINDOW_MS = 60_000;
-
-// Lives only as long as the warm instance, and each instance counts alone —
-// so this blunts a single hammering tab, not a distributed flood. Swap for
-// Upstash/Vercel KV if that ever becomes the threat.
-const hits = new Map();
-
-function rateLimited(ip) {
-  const now = Date.now();
-  const fresh = (hits.get(ip) || []).filter((t) => now - t < RATE_WINDOW_MS);
-  fresh.push(now);
-  hits.set(ip, fresh);
-
-  // Keep the map from growing without bound across a long-lived instance.
-  if (hits.size > 5000) {
-    for (const [key, stamps] of hits) {
-      if (!stamps.some((t) => now - t < RATE_WINDOW_MS)) hits.delete(key);
-    }
-  }
-  return fresh.length > RATE_LIMIT;
-}
+/**
+ * Caps on what one request may cost.
+ *
+ * The bot is prompted to answer in two or three sentences, so these are sized
+ * for that rather than for a document: with the ~950-token system prompt, a
+ * request maxes out near 3,200 tokens instead of the 6,400 the earlier, looser
+ * caps allowed. Nothing a real visitor types comes close.
+ */
+const MAX_MESSAGES = 10; // turns kept from the transcript, most recent first
+const MAX_CHARS = 600; // per message
+const MAX_BODY_CHARS = 8000; // whole transcript
 
 function clientIp(req) {
   const fwd = req.headers['x-forwarded-for'];
@@ -103,8 +87,13 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed.' });
   }
 
-  if (rateLimited(clientIp(req))) {
-    return res.status(429).json({ error: 'Too many messages. Give it a minute.' });
+  const limit = checkRateLimit(clientIp(req));
+  if (!limit.ok) {
+    // Named in the log so a real flood is distinguishable from one impatient
+    // visitor, and from the global backstop tripping.
+    console.warn('[chat] rate limit:', limit.rule);
+    res.setHeader('Retry-After', String(limit.retryAfter));
+    return res.status(429).json({ error: limit.error });
   }
 
   const history = validate(req.body);

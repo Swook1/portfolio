@@ -73,7 +73,7 @@ function config() {
  * @param {AbortSignal} [args.signal]
  * @returns {Promise<string>} the reply text
  */
-export async function complete({ messages, signal, maxTokens = 400, temperature = 0.4 }) {
+export async function complete({ messages, signal, maxTokens = 250, temperature = 0.4 }) {
   const { apiKey, model, baseUrl } = config();
 
   const res = await fetch(`${baseUrl}/chat/completions`, {
