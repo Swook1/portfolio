@@ -1,11 +1,43 @@
 import { createAnimatable, utils } from 'animejs';
-import { AURORA_FRAGMENT, AURORA_VERTEX } from './auroraScene';
+import { auroraFragment, AURORA_VERTEX } from './auroraScene';
 import { createStarField } from './spaceScene';
 import { wrapDepth } from './depth';
 
-const FRAME_MS = 1000 / 30; // the backdrop never needs more than 30fps
-const STAR_COUNT = 700;
 const FIELD = { x: 26, y: 18, z: 60 };
+
+/**
+ * The two quality profiles.
+ *
+ * `lite` is what a phone gets. Every value in it is a fill-rate or bandwidth
+ * decision rather than a visual one: the aurora is fragment bound, so the
+ * drawing buffer and the octave count dominate its cost, and the stars are
+ * bound by the per-frame CPU walk over their positions.
+ *
+ * The result is the same backdrop, not a different one — same aurora, same
+ * field, same drift. It is drawn smaller, softer and less often.
+ */
+const PROFILES = {
+  high: {
+    frameMs: 1000 / 30, // the backdrop never needs more than 30fps
+    starCount: 700,
+    // Above ~1.5 the aurora costs real time for detail nobody can see in a
+    // soft gradient.
+    pixelRatio: () => Math.min(window.devicePixelRatio, 1.5),
+    octaves: 3,
+    powerPreference: 'default',
+  },
+  lite: {
+    frameMs: 1000 / 24,
+    starCount: 240,
+    // Under 1: the buffer is smaller than the CSS box and the browser scales
+    // it up. A phone's DPR is 3 or 4, so honouring it would mean shading ten
+    // times the pixels a laptop does on a fraction of the GPU. The aurora is
+    // a slow gradient and the stars bloom anyway, so neither shows the seams.
+    pixelRatio: () => Math.min(window.devicePixelRatio, 1) * 0.75,
+    octaves: 2,
+    powerPreference: 'low-power',
+  },
+};
 
 // Idle drift. Slow enough to read as a sky rather than as an animation: the
 // roll takes about twenty minutes to come round, and the cruise crosses the
@@ -27,11 +59,19 @@ const SWAY_Y = 0.6;
  * anime.js damps every input: scroll drifts the aurora and flies the camera
  * through the field, the pointer tilts both.
  */
-export async function createNebula({ canvas, onLost, onRestored }) {
+export async function createNebula({ canvas, onLost, onRestored, quality = 'high' }) {
   const THREE = await import('three');
 
-  const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: false });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
+  const profile = PROFILES[quality] || PROFILES.high;
+  const { frameMs: FRAME_MS, starCount: STAR_COUNT } = profile;
+
+  const renderer = new THREE.WebGLRenderer({
+    canvas,
+    alpha: true,
+    antialias: false,
+    powerPreference: profile.powerPreference,
+  });
+  renderer.setPixelRatio(profile.pixelRatio());
 
   // --- Pass 1: aurora -------------------------------------------------------
   const auroraScene = new THREE.Scene();
@@ -47,7 +87,7 @@ export async function createNebula({ canvas, onLost, onRestored }) {
 
   const auroraMaterial = new THREE.ShaderMaterial({
     vertexShader: AURORA_VERTEX,
-    fragmentShader: AURORA_FRAGMENT,
+    fragmentShader: auroraFragment({ octaves: profile.octaves }),
     uniforms,
     transparent: true,
     depthWrite: false,
@@ -97,20 +137,44 @@ export async function createNebula({ canvas, onLost, onRestored }) {
   };
 
   window.addEventListener('scroll', onScroll, { passive: true });
-  window.addEventListener('pointermove', onPointerMove, { passive: true });
+  // A touch device has no hovering pointer: every `pointermove` there is part
+  // of a scroll gesture the scroll handler already sees, so listening would
+  // only add work on the frames that can least afford it.
+  const tracksPointer = window.matchMedia('(hover: hover)').matches;
+  if (tracksPointer) window.addEventListener('pointermove', onPointerMove, { passive: true });
   onScroll();
 
   // --- Sizing ---------------------------------------------------------------
-  const resize = () => {
+  // Mobile browsers fire `resize` every time the URL bar slides away, which is
+  // to say on most scrolls. Reallocating the drawing buffer that often is both
+  // expensive and visible as a flicker, so a height-only change smaller than
+  // the bar is ignored and the canvas keeps its slightly-off aspect — which on
+  // a slow gradient and a point field is not something you can see.
+  const URL_BAR_SLACK = 150;
+  let lastWidth = 0;
+  let lastHeight = 0;
+
+  const resize = (force = false) => {
     const width = window.innerWidth;
     const height = window.innerHeight;
+    if (
+      !force &&
+      width === lastWidth &&
+      Math.abs(height - lastHeight) < URL_BAR_SLACK
+    ) {
+      return;
+    }
+    lastWidth = width;
+    lastHeight = height;
+
     uniforms.uAspect.value = width / height;
     starCamera.aspect = width / height;
     starCamera.updateProjectionMatrix();
     renderer.setSize(width, height, false);
   };
-  window.addEventListener('resize', resize);
-  resize();
+  const onResize = () => resize();
+  window.addEventListener('resize', onResize);
+  resize(true);
 
   // --- Frame loop -----------------------------------------------------------
   let frame = 0;
@@ -239,8 +303,9 @@ export async function createNebula({ canvas, onLost, onRestored }) {
   const handleRestored = () => {
     if (disposed) return;
     // three.js has already rebuilt the GL context by now; this only has to put
-    // the loop and the frame clock back.
-    resize();
+    // the loop and the frame clock back. Forced: the new buffer has no size of
+    // its own yet, so the guard above must not short-circuit it.
+    resize(true);
     lastFrame = 0;
     lastNow = 0;
     draw(performance.now());
@@ -257,8 +322,8 @@ export async function createNebula({ canvas, onLost, onRestored }) {
     canvas.removeEventListener('webglcontextlost', handleLost);
     canvas.removeEventListener('webglcontextrestored', handleRestored);
     window.removeEventListener('scroll', onScroll);
-    window.removeEventListener('pointermove', onPointerMove);
-    window.removeEventListener('resize', resize);
+    if (tracksPointer) window.removeEventListener('pointermove', onPointerMove);
+    window.removeEventListener('resize', onResize);
     auroraDrift.revert();
     auroraPointer.revert();
     flight.revert();

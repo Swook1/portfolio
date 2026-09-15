@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { animate, stagger } from 'animejs';
 import { useAnimeScope, prefersReducedMotion } from '../hooks/useAnimeScope';
-import { webglAvailable } from '../lib/webgl';
+import { webglAvailable, lowPowerDevice } from '../lib/webgl';
 
 /**
  * Deterministic star field. Positions are fixed constants rather than
@@ -20,10 +20,14 @@ const DOTS = Array.from({ length: 42 }, (_, i) => {
  * background still paints behind it.
  *
  * Two tiers. The CSS tier — drifting blobs, a faded grid, a twinkling dot
- * field — renders immediately and is the whole backdrop on mobile, on reduced
- * motion, and without WebGL. On desktop the three.js tier fades in over it
- * after first paint, and the CSS blobs and dots step aside so the two don't
- * stack. three.js is never in the initial bundle.
+ * field — renders immediately and is the whole backdrop on reduced motion and
+ * without WebGL. Everywhere else the three.js tier fades in over it after
+ * first paint, and the CSS blobs and dots step aside so the two don't stack.
+ * three.js is never in the initial bundle.
+ *
+ * Phones are not cut out of the WebGL tier; they get it on the `lite` quality
+ * profile, which draws the same scene into a smaller buffer with fewer stars,
+ * a shorter noise loop and a lower frame cap.
  *
  * The WebGL tier is `backdrop/nebulaScene.js`: an aurora with a star field
  * over it. `auroraScene.js` and `spaceScene.js` hold each half on its own,
@@ -70,8 +74,12 @@ export default function Backdrop() {
   });
 
   useEffect(() => {
-    const wide = window.matchMedia('(min-width: 1024px)').matches;
-    if (!wide || prefersReducedMotion() || !webglAvailable()) return undefined;
+    if (prefersReducedMotion() || !webglAvailable()) return undefined;
+
+    // Phones get the same backdrop on a cheaper profile rather than no
+    // backdrop at all — see PROFILES in `backdrop/nebulaScene.js` for what
+    // `lite` actually costs.
+    const quality = lowPowerDevice() ? 'lite' : 'high';
 
     let cancelled = false;
     let idle = 0;
@@ -85,6 +93,7 @@ export default function Backdrop() {
         // the page is never left with a blank canvas over a flat background.
         scene.current = await createNebula({
           canvas: canvas.current,
+          quality,
           onLost: () => setSpaceReady(false),
           onRestored: () => setSpaceReady(true),
         });
@@ -101,8 +110,10 @@ export default function Backdrop() {
 
     // A plain timer rather than requestIdleCallback: idle callbacks can be
     // starved indefinitely, and the backdrop should not be left to chance.
-    // 900ms is comfortably past first paint for this page.
-    idle = window.setTimeout(start, 900);
+    // 900ms is comfortably past first paint for this page on a desktop; a
+    // phone is still settling then, and the three.js chunk is a far bigger
+    // share of its connection, so it waits longer before spending any of it.
+    idle = window.setTimeout(start, quality === 'lite' ? 1600 : 900);
 
     return () => {
       cancelled = true;
