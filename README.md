@@ -73,6 +73,22 @@ Settings -> Environment Variables. Do **not** prefix them with `VITE_`: that
 inlines a value into the browser bundle, which for an API key means handing it
 to every visitor.
 
+### Limits
+
+InferHub is prepaid, so the route is sized to bound what a request can cost
+rather than to be generous. A transcript is capped at 8,000 characters over at
+most 10 turns, 600 per message, and the reply at 250 tokens — with the ~950-token
+system prompt that puts the ceiling near 3,200 tokens a request. The bot answers
+in two or three sentences, so nothing real gets truncated.
+
+`api/_ratelimit.js` holds three sliding windows: 8 requests per minute per IP
+(burst), 40 per hour per IP (sustained), and 300 per hour across everyone
+(global). The first two blunt one hammering client; the global one is the only
+rule a distributed flood cannot walk around, and it exists to protect the
+balance. Counters are per warm instance, so the real ceiling is the limit times
+however many instances are running — approximate on purpose, and swappable for
+Vercel KV without touching anything above that file.
+
 ### When it fails
 
 There is no canned fallback anywhere in the path — if the model does not answer,
