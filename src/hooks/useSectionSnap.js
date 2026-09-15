@@ -30,6 +30,20 @@ function currentIndex(list) {
 }
 
 /**
+ * True when `node` sits inside a box that has claimed its own scrolling.
+ *
+ * `scrollableAncestor` alone is not enough for these: it only defers while the
+ * box still has room, so a wheel that reaches the bottom of the chat log would
+ * fall through and page the document out from under an open panel. A trap
+ * refuses the gesture at its edges too — `overscroll-behavior: contain` makes
+ * the browser do the same for the native scroll.
+ */
+function inScrollTrap(node) {
+  const el = node instanceof Element ? node : null;
+  return Boolean(el?.closest('[data-lenis-prevent]'));
+}
+
+/**
  * The nearest ancestor of `node` that can still scroll in `dir` itself.
  *
  * The projects rail is the reason this exists: it is a scrolling column of its
@@ -65,6 +79,7 @@ function scrollableAncestor(node, dir) {
  * else it hands on:
  *  - a section taller than the viewport, until it is scrolled to its own edge
  *  - anything inside its own scrollable box (the projects rail)
+ *  - anything inside a scroll trap, marked `data-lenis-prevent` (the chat panel)
  *  - an open modal
  *
  * Narrow viewports and reduced motion never arm it: phones have sections taller
@@ -136,6 +151,7 @@ export function useSectionSnap() {
     const onWheel = (event) => {
       if (event.ctrlKey) return; // pinch zoom
       if (modalOpen()) return;
+      if (inScrollTrap(event.target)) return;
 
       const dir = Math.sign(event.deltaY);
       if (!dir) return;
@@ -175,6 +191,7 @@ export function useSectionSnap() {
 
     const onKey = (event) => {
       if (modalOpen()) return;
+      if (inScrollTrap(event.target)) return;
       if (event.metaKey || event.ctrlKey || event.altKey) return;
       const tag = event.target?.tagName;
       if (tag === 'INPUT' || tag === 'TEXTAREA' || event.target?.isContentEditable) return;
