@@ -29,7 +29,16 @@ export const AURORA_VERTEX = /* glsl */ `
   }
 `;
 
-export const AURORA_FRAGMENT = /* glsl */ `
+/**
+ * The aurora fragment shader, built for a given fbm octave count.
+ *
+ * The octave count has to be baked in rather than passed as a uniform: a GLSL
+ * ES 1.00 `for` needs a constant bound. Three octaves is the full-quality
+ * field; two costs a third of the noise calls per pixel, which is the single
+ * biggest saving available on a phone, where this shader is fill-rate bound.
+ */
+export function auroraFragment({ octaves = 3 } = {}) {
+  return /* glsl */ `
   precision highp float;
 
   varying vec2 vUv;
@@ -59,7 +68,7 @@ export const AURORA_FRAGMENT = /* glsl */ `
   float fbm(vec2 p) {
     float total = 0.0;
     float amplitude = 0.5;
-    for (int i = 0; i < 3; i++) {
+    for (int i = 0; i < ${octaves}; i++) {
       total += noise(p) * amplitude;
       p *= 2.02;
       amplitude *= 0.5;
@@ -117,6 +126,10 @@ export const AURORA_FRAGMENT = /* glsl */ `
     gl_FragColor = vec4(colour, alpha);
   }
 `;
+}
+
+/** The full-quality fragment, kept as a constant for the default path. */
+export const AURORA_FRAGMENT = auroraFragment();
 
 /**
  * The site-wide backdrop: a slow aurora field.

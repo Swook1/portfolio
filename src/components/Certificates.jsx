@@ -226,8 +226,8 @@ export default function Certificates() {
           <h2 className="section-title mt-5">Certificates</h2>
           <p className="section-sub">
             {mode === '3d'
-              ? `Drag to turn the carousel, click the front one to open it — ${total} in total`
-              : `Drag the deck, or let it run — ${total} in total`}
+              ? `Drag to turn the carousel, click the front one to open it`
+              : `Drag the deck, or let it run`}
           </p>
         </div>
 
