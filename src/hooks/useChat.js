@@ -17,7 +17,8 @@ const makeMessage = (role, text, extra = {}) => ({
  * Conversation state for the chat widget.
  *
  * Owns the transcript, the pending flag that drives the typing indicator, and
- * the in-flight request so a send can be cancelled when the panel unmounts.
+ * the in-flight request. Called from ChatWidget rather than ChatPanel, so the
+ * thread survives the panel closing and dies only with the page.
  * It knows nothing about where replies come from — that is chatService.
  */
 export function useChat() {
@@ -26,7 +27,10 @@ export function useChat() {
   const [error, setError] = useState(null);
   const inFlight = useRef(null);
 
-  // A send outliving its panel would set state on an unmounted tree.
+  // Only for teardown of whatever owns this hook. It is deliberately not tied
+  // to the panel's own mount: closing the panel mid-question leaves the request
+  // running, so the answer is waiting in the thread when the visitor reopens
+  // rather than thrown away because they looked elsewhere for eight seconds.
   useEffect(() => () => inFlight.current?.abort(), []);
 
   const send = useCallback(

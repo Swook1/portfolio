@@ -2,7 +2,6 @@ import { useEffect, useLayoutEffect, useRef } from 'react';
 import { animate, stagger } from 'animejs';
 import { prefersReducedMotion } from '../../hooks/useAnimeScope';
 import { bot, quickReplies } from '../../data/chat';
-import { useChat } from '../../hooks/useChat';
 import ChatMessage from './ChatMessage';
 import TypingDots from './TypingDots';
 import BotAvatar from './BotAvatar';
@@ -10,11 +9,12 @@ import ChatComposer from './ChatComposer';
 
 /**
  * The conversation surface. Mounted only while open, so the entry animation
- * and the greeting both replay on each open, and the transcript resets with
- * the widget rather than lingering invisibly.
+ * replays on each open — but the transcript it renders is owned by ChatWidget
+ * and outlives this mount, so reopening shows the thread rather than a fresh
+ * greeting.
  */
-export default function ChatPanel({ onClose }) {
-  const { messages, pending, error, send, reset } = useChat();
+export default function ChatPanel({ chat, onClose }) {
+  const { messages, pending, error, send, reset } = chat;
   const panel = useRef(null);
   const log = useRef(null);
   const lastCount = useRef(messages.length);
