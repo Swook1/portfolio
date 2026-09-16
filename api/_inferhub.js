@@ -12,6 +12,22 @@
 
 const DEFAULT_BASE_URL = 'https://api.inferhub.dev/v1';
 
+/**
+ * How long one upstream call may take.
+ *
+ * Sized against the platform: the function is capped at 45s (vercel.json), and
+ * a retry costs a second attempt plus the backoff. Two 20s attempts plus 600ms
+ * come to 40.6s, so a hung provider becomes our 502 with a readable sentence
+ * rather than a 504 with none.
+ *
+ * Raising this means raising `maxDuration` and the widget's own timeout with
+ * it, or whichever is lowest just moves the unexplained failure somewhere else:
+ *
+ *   maxDuration > ATTEMPT_TIMEOUT_MS * 2 + backoff, and the client waits longer
+ *   than maxDuration, so the route's sentence beats both of them to the visitor.
+ */
+const ATTEMPT_TIMEOUT_MS = 20000;
+
 /** Upstream failed in a way worth reporting differently from a bug. */
 export class UpstreamError extends Error {
   constructor(message, { status, kind, retryable }) {
@@ -76,21 +92,35 @@ function config() {
 export async function complete({ messages, signal, maxTokens = 250, temperature = 0.4 }) {
   const { apiKey, model, baseUrl } = config();
 
-  const res = await fetch(`${baseUrl}/chat/completions`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify({
-      model,
-      messages,
-      max_tokens: maxTokens,
-      temperature,
-      stream: false,
-    }),
-    signal,
-  });
+  let res;
+  try {
+    res = await fetch(`${baseUrl}/chat/completions`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model,
+        messages,
+        max_tokens: maxTokens,
+        temperature,
+        stream: false,
+      }),
+      signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(ATTEMPT_TIMEOUT_MS)]) : AbortSignal.timeout(ATTEMPT_TIMEOUT_MS),
+    });
+  } catch (err) {
+    // A hung upstream must surface as our own 502, not as the platform killing
+    // the function at maxDuration and returning an opaque 504.
+    if (err?.name === 'TimeoutError') {
+      throw new UpstreamError(`InferHub timed out after ${ATTEMPT_TIMEOUT_MS}ms`, {
+        status: 504,
+        kind: 'upstream',
+        retryable: true,
+      });
+    }
+    throw err; // the caller's own abort, or a network failure
+  }
 
   if (!res.ok) {
     // Read the body for the log, but never hand it back to the browser — it can

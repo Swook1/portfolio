@@ -12,8 +12,14 @@
 /** Override for a backend on another origin; defaults to this site's own route. */
 const ENDPOINT = import.meta.env.VITE_CHAT_ENDPOINT || '/api/chat';
 
-/** Past this, the widget gives up rather than leaving the dots spinning. */
-const TIMEOUT_MS = 30000;
+/**
+ * Past this, the widget gives up rather than leaving the dots spinning.
+ *
+ * Deliberately longer than the route's own ceiling (`maxDuration: 45` in
+ * vercel.json): whichever side gives up first decides what the visitor reads,
+ * and the route's message says something, while an aborted fetch says nothing.
+ */
+const TIMEOUT_MS = 48000;
 
 /** Strips UI-only fields so the history is safe to send over the wire. */
 export function toWireFormat(messages) {
