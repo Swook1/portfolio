@@ -1,7 +1,7 @@
 /** Persona and canned copy for the chat widget. Swap freely — nothing here
     is wired to a backend; the service layer in lib/chatService.js is. */
 export const bot = {
-  name: 'Rayyan Bot',
+  name: 'Rayyan Assistant',
   role: 'Ask me about his work',
 };
 
