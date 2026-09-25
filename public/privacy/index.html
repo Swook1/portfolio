@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Privacy Policy - WA Chatbot</title>
+    <meta name="description" content="Privacy policy for WA Chatbot, a personal WhatsApp assistant operated by Rayyan Zafier Leksono." />
+    <meta name="theme-color" content="#0b0f17" />
+    <meta name="robots" content="noindex" />
+    <link rel="canonical" href="https://rayyanzafier.web.id/privacy/" />
+    <link rel="icon" href="/favicon.ico" sizes="32x32" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet" />
+    <style>
+      :root {
+        --bg: #0b0f17;
+        --surface: #151c28;
+        --border: #253046;
+        --text: #e6edf3;
+        --text-muted: #9aa7b8;
+        --text-dim: #6b7a8f;
+        --accent: #3b82f6;
+        --accent-soft: #60a5fa;
+      }
+      * { box-sizing: border-box; }
+      html { scroll-behavior: smooth; }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font-family: 'Poppins', system-ui, sans-serif;
+        line-height: 1.7;
+        -webkit-font-smoothing: antialiased;
+      }
+      ::selection { background: var(--accent); color: #fff; }
+      main { max-width: 760px; margin: 0 auto; padding: 56px 16px 80px; }
+      a { color: var(--accent-soft); }
+      .back { font-size: 14px; color: var(--text-muted); text-decoration: none; }
+      .back:hover { color: var(--accent-soft); }
+      h1, h2 { font-family: 'Space Grotesk', 'Poppins', sans-serif; line-height: 1.25; }
+      h1 { font-size: clamp(28px, 6vw, 40px); margin: 24px 0 8px; }
+      h2 { font-size: 20px; margin: 40px 0 8px; scroll-margin-top: 24px; }
+      .meta { color: var(--text-dim); font-size: 14px; margin: 0 0 32px; }
+      p, li { color: var(--text-muted); font-size: 15px; }
+      strong { color: var(--text); font-weight: 500; }
+      ul { padding-left: 20px; }
+      li { margin: 4px 0; }
+      .card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 16px 20px;
+        margin: 24px 0;
+      }
+      .card p { margin: 0; }
+      footer { margin-top: 56px; padding-top: 24px; border-top: 1px solid var(--border); font-size: 13px; color: var(--text-dim); }
+    </style>
+  </head>
+  <body>
+    <main>
+      <a class="back" href="/">&larr; rayyanzafier.web.id</a>
+      <h1>Privacy Policy</h1>
+      <p class="meta">WA Chatbot &middot; Effective 25 September 2026</p>
+
+      <div class="card">
+        <p><strong>Summary:</strong> WA Chatbot is a private, personal WhatsApp assistant used only by its operator.
+          It does not serve the public, does not sell data, and ignores messages from anyone who is not on its allowlist.</p>
+      </div>
+
+      <h2 id="who">Who operates this service</h2>
+      <p>WA Chatbot ("the bot") is operated by Rayyan Zafier Leksono ("I", "me") as a personal project. It uses the
+        WhatsApp Business Platform (Cloud API) provided by Meta to send and receive messages.</p>
+
+      <h2 id="data">What data is processed</h2>
+      <ul>
+        <li><strong>WhatsApp messages</strong> sent to the bot by allowlisted phone numbers: the sender's phone number,
+          message content and timestamps.</li>
+        <li><strong>Reminders</strong> created through the bot: reminder text, time and repeat schedule.</li>
+        <li><strong>Transaction records</strong> derived from the operator's own bank notification emails: date,
+          transaction type, merchant or recipient name, and amount. Account numbers are not stored.</li>
+        <li><strong>Messages from numbers that are not allowlisted</strong> are ignored. Their content is not stored or
+          processed; only the message ID is kept briefly to prevent duplicate processing, and the sender's number may
+          appear in server logs.</li>
+      </ul>
+
+      <h2 id="use">How the data is used</h2>
+      <ul>
+        <li>To reply to messages, send reminders, and produce spending summaries for the operator.</li>
+        <li>Message content and relevant summaries are sent to a third-party AI model provider to generate replies.
+          Only what is needed to answer a message is sent.</li>
+        <li>Data is not used for advertising, profiling, or any purpose unrelated to the bot's function.</li>
+      </ul>
+
+      <h2 id="sharing">Sharing</h2>
+      <p>Data is not sold or shared, except with the service providers needed to run the bot: Meta (WhatsApp message
+        delivery), the AI model provider (reply generation), and the server hosting provider.</p>
+
+      <h2 id="storage">Storage and security</h2>
+      <p>Data is stored in a database on a private server. Access is limited to the operator, connections use HTTPS,
+        and every incoming webhook request is verified with Meta's signature before it is processed.</p>
+
+      <h2 id="retention">Retention</h2>
+      <p>Chat history and reminders are kept until they are deleted. Chat history can be cleared at any time by sending
+        <strong>/reset</strong> to the bot. Transaction records are kept until the operator deletes them.</p>
+
+      <h2 id="data-deletion">Data deletion</h2>
+      <p>To have your data deleted, email <a href="mailto:rayyanzafier@gmail.com">rayyanzafier@gmail.com</a> with the
+        phone number you used. All stored messages, reminders and related records for that number will be deleted
+        within 30 days, and you will receive a confirmation by email.</p>
+
+      <h2 id="changes">Changes</h2>
+      <p>If this policy changes, the updated version will be posted on this page with a new effective date.</p>
+
+      <h2 id="contact">Contact</h2>
+      <p>Questions about this policy: <a href="mailto:rayyanzafier@gmail.com">rayyanzafier@gmail.com</a></p>
+
+      <footer>&copy; 2026 Rayyan Zafier Leksono</footer>
+    </main>
+  </body>
+</html>
